@@ -2,9 +2,7 @@
 
 (** SPDX-License-Identifier: CC0-1.0 *)
 
-open Lambda_lib
-open Ast
-open Lambda
+(*open Lambda
 
 type 'a status =
   | Done of 'a
@@ -78,3 +76,4 @@ module Std = struct
     |> Format.printf "%a\n%!" Pprintast.pp
   ;;
 end
+*)

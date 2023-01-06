@@ -2,10 +2,9 @@
 
 (** SPDX-License-Identifier: CC0-1.0 *)
 
-open Lambda_lib
+open Ocaml_with_var
 open Ast
-open Lambda
-
+(*
 type 'a status =
   | Done of 'a
   | WIP of 'a
@@ -118,3 +117,4 @@ module _ = struct
        Format.printf "%a\n%!" pp_lam lam
      in *)
 end
+*)

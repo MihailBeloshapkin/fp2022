@@ -135,7 +135,7 @@ module SimpleLangParser = struct
     choice
     [
       (new_ident >>= fun res -> return @@ Exp_ident res)
-    ; Literals.int_token
+    ; literals
     ]
   
   let appl =
@@ -158,18 +158,20 @@ module SimpleLangParser = struct
     choice [ arithm_parser; decl; appl; (new_ident >>= fun res -> return @@ Exp_ident res) ]
 
   
-  let p = 
+  let body = 
     many 
       (base <* char '\n' <|> base <* space1 <|> base) 
       >>= fun res -> return @@ link_exps res
-
 
   let hl_fun_decl =
     lift3
       (fun a b c -> fun_constructor a b c)
       ((token "let") *> space1 *> new_ident) 
       (many1 (space1 *> new_ident))
-      ((space *> token "=" *> space *> p <* space <* string ";;" <* space))
+      ((space *> token "=" *> space *> body <* space <* string ";;" <* space))
+  ;;
+
+  let p = choice [arithm_parser; hl_fun_decl; appl]
 
   let p1 = appl 
 end
@@ -211,7 +213,7 @@ end
 let parse_exp code = 
   let result =
     Angstrom.parse_string 
-      (SimpleLangParser.hl_fun_decl) 
+      (SimpleLangParser.p) 
       ~consume:Angstrom.Consume.All 
       code
   in
@@ -225,7 +227,7 @@ let print_result = function
 let () =
   parse_exp "let f q w = let res = w + q in res;;" |> print_result;
   printf "\n";
-  parse_exp "let f q = q + 1 ;;" |> print_result;
+  parse_exp "1 + 2" |> print_result;
   printf "\n";
   parse_exp 
     {|
@@ -237,3 +239,20 @@ let () =
       ;;
     |} |> print_result
 ;;
+
+let should_equal e1 e2 =
+  match e2 with
+  | Result.Ok e when e = e1 -> true
+  | _ -> false
+;;
+
+let p2 = parse_exp "1 + 2"
+let%test _ =
+  match  p2 with
+  | Result.Ok (Exp_apply ("+", [Exp_literal (Int 1); Exp_literal (Int 2)])) -> true
+  | _ -> false
+  
+(*let%test _ =
+  parse_exp "let f q w = let res = w + q in res;;" = Exp_fun 
+
+*)

@@ -1,6 +1,6 @@
 (library
- (name lambda_lib)
- (public_name Lambda.Lib)
+ (name ocaml_with_var)
+ (public_name Lambda.OCamli)
  (modules Ast Parser)
  (modules_without_implementation ast)
  (libraries base angstrom)

@@ -2,7 +2,7 @@
 
 (** SPDX-License-Identifier: CC0-1.0 *)
 
-open Lambda_lib
+(*open Lambda_lib
 
 let () =
   let s = Stdio.In_channel.input_all Caml.stdin in
@@ -10,3 +10,4 @@ let () =
   | Result.Ok ast -> Format.printf "%a\n%!" Printast.pp_named ast
   | Error _ -> Format.printf "Some error"
 ;;
+*)

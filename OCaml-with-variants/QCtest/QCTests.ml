@@ -5,12 +5,12 @@
 open Format
 open QCheck.Gen
 open Lambda_lib
-open Lambda_lib.Utils
 
 let varname =
   map (fun n -> String.make 1 (Char.chr n)) (int_range (Char.code 'a') (Char.code 'z'))
 ;;
 
+(*
 let lam_gen =
   QCheck.Gen.(
     sized
@@ -61,3 +61,4 @@ let print_parse_is_identity =
 ;;
 
 let run () = QCheck_base_runner.run_tests [ print_parse_is_identity ]
+*)
