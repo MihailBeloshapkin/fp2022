@@ -1,4 +1,4 @@
 (executable
  (name runULC)
  (modules runULC QCTests)
- (libraries Lambda.OCamli qcheck-core qcheck-core.runner))
+ (libraries OCaml-with-variants.OCamli qcheck-core qcheck-core.runner))
