@@ -25,7 +25,7 @@ type exps =
   | Exp_ident of ident
   | Exp_literal of literal
   | Exp_seq of exps * exps
-  | Exp_apply of ident * exps list  
+  | Exp_apply of ident * exps list
   | Exp_unit
 
 (* Application [f g ] *)

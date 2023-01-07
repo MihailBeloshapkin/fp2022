@@ -4,6 +4,7 @@ open Ocaml_with_var
 let run_repl _ =
   Caml.Format.eprintf "OCaml-style toplevel (ocamlc, utop) is not implemented"
 ;;
+
 (*
 let run_single eval =
   let open Lambda_lib in
@@ -28,7 +29,7 @@ type opts =
   ; mutable stra : strategy
   }
 
-let () = 
+let () =
   let opts = { batch = false; stra = CBN } in
   let open Caml.Arg in
   parse
@@ -43,9 +44,10 @@ let () =
     (fun _ ->
       Caml.Format.eprintf "Positioned arguments are not supported\n";
       Caml.exit 1)
-    "Read-Eval-Print-Loop for Utyped Lambda Calculus";
-  
-    (*
+    "Read-Eval-Print-Loop for Utyped Lambda Calculus"
+;;
+
+(*
   let eval =
     Lambda.apply_strat
       (match opts.stra with
@@ -56,4 +58,3 @@ let () =
   in
   (if opts.batch then run_single else run_repl) eval
   *)
-;;
