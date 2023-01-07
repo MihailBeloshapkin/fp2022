@@ -10,7 +10,8 @@
  (name REPL)
  (public_name REPL)
  (modules REPL)
- (libraries Lambda.OCamli stdio))
+ (libraries OCaml-with-variants.OCamli stdio))
+
 
 (cram
  (deps ./REPL.exe %{bin:REPL}))
