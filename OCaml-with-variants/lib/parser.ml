@@ -4,7 +4,6 @@
 
 (* TODO: implement parser here *)
 open Angstrom
-open Base
 open Caml.Format
 open Ast
 
@@ -12,8 +11,6 @@ let is_whitespace = function
   | '\x20' | '\x0a' | '\x0d' | '\x09' -> true
   | _ -> false
 ;;
-
-let whitespace = take_while is_whitespace
 
 let is_digit = function '0'..'9' -> true | _ -> false
 
@@ -40,15 +37,13 @@ module FloatNumParser = struct
     return (sign ^ whole ^ "." ^ part)
 end
 
-module SimpleLangParser = struct
-  let keywords_list = ["let"; "in"]
+module OCamlParser = struct
+  open Base
+  let keywords_list = ["let"; "in"; "rec"; "if"; "then"; "else"; "match"; "with"]
 
-  let is_kw = List.fold
+  let is_keyword id = List.exists ~f:(fun s -> String.equal s id) keywords_list
 
   let token_separator = take_while (is_whitespace)
-
-  let as_token p = token_separator *> p <* token_separator
-
 
   let is_letter = function
     | 'a'..'z' -> true
@@ -74,19 +69,19 @@ module SimpleLangParser = struct
 
     let string_token  = 
       space *> char '"' *> take_while (fun c -> not (Char.equal c '"')) <* char '"'
-      >>= fun res -> return @@ Exp_literal (String ("\"" ^ res ^ "\"")) 
+      >>= fun res -> return @@ Exp_literal (String res) 
   end
 
   module BinOperators = struct
     let ar_operators =
-      choice [ token "+"; token "-"; token "/"; token "*" ]
+      choice [ token "+."; token "-."; token "*."; token "/.";  token "+"; token "-"; token "/"; token "*" ]
   end
 
   let new_ident =
     space
     *> (take_while1 is_letter)
     >>= fun str -> 
-      if String.equal str "in" then fail "Keyword in the wrong place of program" else return str
+      if is_keyword str then fail "Keyword in the wrong place of program" else return str
   ;;
 
   let int_number = take_while1 is_digit >>= fun s -> return @@ int_of_string s
@@ -148,7 +143,7 @@ module SimpleLangParser = struct
 
   let decl =
     lift3 
-      (fun a b c -> let_binding_constructor a b c)
+      (fun name args body -> let_binding_constructor name args body)
       ((token "let") *> space1 *> new_ident) 
       (many (space1 *> new_ident))
       (space *> token "=" *> space *> (choice [arithm_parser; literals; appl]) <* space <* token "in")
@@ -158,7 +153,7 @@ module SimpleLangParser = struct
     choice [ arithm_parser; decl; appl; (new_ident >>= fun res -> return @@ Exp_ident res) ]
 
   
-  let body = 
+  let fun_body = 
     many 
       (base <* char '\n' <|> base <* space1 <|> base) 
       >>= fun res -> return @@ link_exps res
@@ -168,15 +163,15 @@ module SimpleLangParser = struct
       (fun a b c -> fun_constructor a b c)
       ((token "let") *> space1 *> new_ident) 
       (many1 (space1 *> new_ident))
-      ((space *> token "=" *> space *> body <* space <* string ";;" <* space))
+      ((space *> token "=" *> space *> fun_body <* space <* string ";;" <* space))
   ;;
 
   let p = choice [arithm_parser; hl_fun_decl; appl]
-
-  let p1 = appl 
 end
 
-module Priner = struct
+module Printer = struct
+  open Base
+
   let print_let = function
     | (name, Int i) -> printf "Name: %s; Val: %i\n" name i
     | (name, Float i) -> printf "Name: %s; Val: %f\n" name i
@@ -213,46 +208,58 @@ end
 let parse_exp code = 
   let result =
     Angstrom.parse_string 
-      (SimpleLangParser.p) 
+      (OCamlParser.p) 
       ~consume:Angstrom.Consume.All 
       code
   in
   result
 
 let print_result = function
-  | Result.Ok res -> Priner.print_ast res
+  | Result.Ok res -> Printer.print_ast res
   | Result.Error s -> printf "SOMETHING WENT WRONG: %s\n" s 
 ;;
 
+(*
 let () =
-  parse_exp "let f q w = let res = w + q in res;;" |> print_result;
-  printf "\n";
-  parse_exp "1 + 2" |> print_result;
-  printf "\n";
-  parse_exp 
-    {|
-      let func a b =
-        let r = a + b in
-        let d = r * a in
-        let k = 30 in
-        d - k
-      ;;
-    |} |> print_result
-;;
-
-let should_equal e1 e2 =
-  match e2 with
-  | Result.Ok e when e = e1 -> true
-  | _ -> false
-;;
+  parse_exp "let c s = concat s \"asdf\";;" |> print_result
+;;*)
 
 let p2 = parse_exp "1 + 2"
 let%test _ =
-  match  p2 with
-  | Result.Ok (Exp_apply ("+", [Exp_literal (Int 1); Exp_literal (Int 2)])) -> true
-  | _ -> false
+  p2 = Result.Ok (Exp_apply ("+", [Exp_literal (Int 1); Exp_literal (Int 2)]))
   
-(*let%test _ =
-  parse_exp "let f q w = let res = w + q in res;;" = Exp_fun 
+let p2 = parse_exp "a + 2"
+let%test _ =
+  p2 = Result.Ok (Exp_apply ("+", [Exp_ident "a"; Exp_literal (Int 2)])) 
 
-*)
+let p2 = parse_exp "abc - asdf "
+let%test _ =
+  p2 = Result.Ok (Exp_apply ("-", [Exp_ident "abc"; Exp_ident "asdf"])) 
+  
+let p2 = parse_exp "1.5 +. 2.3"
+let%test _ =
+  p2 = Result.Ok (Exp_apply ("+.", [Exp_literal (Float 1.5); Exp_literal (Float 2.3)]))
+    
+let p2 = parse_exp "let incr x = x + 1;;"
+let%test _ =
+  p2 = Result.Ok (Exp_fun ("incr", "x", 
+    Exp_apply ("+", [Exp_ident "x"; Exp_literal (Int 1)])))
+
+let p2 = parse_exp "let c s = concat s \"ml\";;"
+let%test _ =
+  p2 = Result.Ok (Exp_fun ("c", "s", Exp_apply ("concat", [Exp_ident "s"; Exp_literal (String "ml")])))
+
+let p2 = parse_exp "c \"asdf\""
+let%test _ =
+  p2 = Result.Ok (Exp_apply ("c", [Exp_literal (String "asdf")]))
+
+let p2 = parse_exp "let f q w = let res = w + q in res;;"
+let%test _ =
+  p2 = Result.Ok (Exp_fun ("f", "q", 
+                Exp_fun("f", "w", 
+                  Exp_seq ((Exp_letbinding ("res", 
+                    Exp_apply ("+", [Exp_ident "w"; Exp_ident "q"])), Exp_ident "res" )
+                  ))))
+
+let p2 = parse_exp ""
+let%test _ = true
