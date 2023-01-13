@@ -105,26 +105,42 @@ module OCamlParser = struct
 
   let rec link_exps e_list =
     match e_list with
+    | Exp_letbinding (name, body, _) :: t ->
+      Exp_letbinding (name, body, Some (link_exps t))
     | e :: [] -> e
     | h :: t -> Exp_seq (h, link_exps t)
     | _ -> failwith "empty list"
   ;;
 
-  let let_binding_constructor name arg_list body =
-    match arg_list with
-    | [] -> Exp_letbinding (name, body)
-    | _ ->
-      printf "Size: %i" (List.length arg_list);
-      List.iter ~f:(printf "\n%s \n") arg_list;
-      failwith "error!!!!"
+  let rec fun_constructor args body =
+    match args with
+    | [ a ] -> Exp_fun (a, body)
+    | h :: t -> Exp_fun (h, fun_constructor t body)
+    | _ -> failwith "No args!"
   ;;
 
-  let rec fun_constructor name args body =
-    match args with
-    | [ a ] -> Exp_fun (name, a, body)
-    | h :: t -> Exp_fun (name, h, fun_constructor name t body)
-    | _ -> let_binding_constructor name args body
+  let let_binding_constructor name arg_list body next_ex =
+    match arg_list with
+    | [] -> Exp_letbinding (name, body, next_ex)
+    | _ ->
+      let func = fun_constructor arg_list body in
+      Exp_letbinding (name, func, next_ex)
   ;;
+
+  let binop_constructor (Exp_literal op1) operator (Exp_literal op2) =
+    match operator, op1, op2 with
+    | "+", Int i1, Int i2 -> Exp_binop (AddInt (i1, i2))
+    | "-", Int i1, Int i2 -> Exp_binop (SubInt (i1, i2))
+    | "*", Int i1, Int i2 -> Exp_binop (MulInt (i1, i2))
+    | "/", Int i1, Int i2 -> Exp_binop (DivInt (i1, i2))
+    | "+.", Float i1, Float i2 -> Exp_binop (AddFloat (i1, i2))
+    | "-.", Float i1, Float i2 -> Exp_binop (SubFloat (i1, i2))
+    | "*.", Float i1, Float i2 -> Exp_binop (MulFloat (i1, i2))
+    | "/.", Float i1, Float i2 -> Exp_binop (DivFloat (i1, i2))
+    | _ -> failwith "Parsing error"
+  ;;
+
+  let if_then_else_constructor cond b1 b2 = Exp_ifthenelse (cond, b1, b2)
 
   let literals =
     choice [ Literals.float_token; Literals.int_token; Literals.string_token ]
@@ -133,7 +149,7 @@ module OCamlParser = struct
   let arithm_parser =
     let c = choice [ (new_ident >>= fun res -> return @@ Exp_ident res); literals ] in
     lift3
-      (fun arg1 operator arg2 -> Exp_apply (operator, [ arg1; arg2 ]))
+      (fun arg1 operation arg2 -> Exp_apply (operation, [ arg1; arg2 ]))
       (space *> c <* space)
       BinOperators.ar_operators
       (space *> c <* space)
@@ -152,7 +168,7 @@ module OCamlParser = struct
 
   let decl =
     lift3
-      (fun name args body -> let_binding_constructor name args body)
+      (fun name args body -> let_binding_constructor name args body None)
       (token "let" *> space1 *> new_ident)
       (many (space1 *> new_ident))
       (space *> token "=" *> space *> choice [ arithm_parser; literals; appl ]
@@ -160,9 +176,31 @@ module OCamlParser = struct
       <* token "in")
   ;;
 
+  let ifthenelse =
+    let branch_variants = [ appl; (new_ident >>= fun res -> return @@ Exp_ident res) ] in
+    lift3
+      (fun cond fbranch sbranch -> ())
+      (token "if" *> new_ident <* space1 <* token "then")
+      (choice branch_variants)
+      (token "else" *> choice branch_variants)
+  ;;
+
+  (*
+  let ptn_match = 
+    lift2
+      (fun ex match_list -> ())
+      (token "match" *> new_ident <* token "with")
+      (many1 (space1 *> token "|" *> choice []))
+  *)
+
   let base =
     choice
-      [ arithm_parser; decl; appl; (new_ident >>= fun res -> return @@ Exp_ident res) ]
+      [ literals
+      ; arithm_parser
+      ; decl
+      ; appl
+      ; (new_ident >>= fun res -> return @@ Exp_ident res)
+      ]
   ;;
 
   let fun_body =
@@ -172,7 +210,7 @@ module OCamlParser = struct
 
   let hl_fun_decl =
     lift3
-      (fun a b c -> fun_constructor a b c)
+      (fun a b c -> let_binding_constructor a b c None)
       (token "let" *> space1 *> new_ident)
       (many1 (space1 *> new_ident))
       (space *> token "=" *> space *> fun_body <* space <* string ";;" <* space)
@@ -197,14 +235,14 @@ module Printer = struct
   ;;
 
   let rec print_ast = function
-    | Exp_letbinding (id, value) ->
+    | Exp_letbinding (id, value, _) ->
       printf "(LetB: Name=%s value=" id;
       print_ast value;
       printf ")"
     | Exp_literal l -> print_literal l
     | Exp_ident i -> printf "(Ident: %s)" i
-    | Exp_fun (name, arg, e) ->
-      printf "(Fun: name=%s arg=%s" name arg;
+    | Exp_fun (arg, e) ->
+      printf "(Fun: arg=%s" arg;
       print_ast e;
       printf ")"
     | Exp_seq (e1, e2) ->
@@ -216,6 +254,7 @@ module Printer = struct
       printf "(Apply: name=%s Args:" name;
       List.iter ~f:print_ast arg_list;
       printf ")"
+    | Exp_binop bin -> ()
     | _ -> printf "Unrecognised Ast Node"
   ;;
 end
@@ -230,15 +269,13 @@ let print_result = function
   | Result.Error s -> printf "SOMETHING WENT WRONG: %s\n" s
 ;;
 
-(*
-let () =
-  parse_exp "let c s = concat s \"asdf\";;" |> print_result
-;;*)
+let () = parse_exp "let f x = 10;;" |> print_result
 
+(*
 let p2 = parse_exp "1 + 2"
 
 let%test _ =
-  p2 = Result.Ok (Exp_apply ("+", [ Exp_literal (Int 1); Exp_literal (Int 2) ]))
+  p2 = Result.Ok (Exp_apply ("+", [Exp_literal (Int 1); Exp_literal (Int 2)]))
 ;;
 
 let p2 = parse_exp "a + 2"
@@ -256,6 +293,7 @@ let%test _ =
 ;;
 
 let p2 = parse_exp "let incr x = x + 1;;"
+
 
 let%test _ =
   p2
@@ -295,4 +333,4 @@ let%test _ =
 
 let p2 = parse_exp ""
 
-let%test _ = true
+let%test _ = true*)

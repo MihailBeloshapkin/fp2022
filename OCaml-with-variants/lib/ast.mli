@@ -14,18 +14,24 @@ type arg =
   | Lit of literal
 
 type binop =
-  | Add
-  | Sub
-  | Mul
-  | Div
+  | AddInt of int * int
+  | SubInt of int * int
+  | MulInt of int * int
+  | DivInt of int * int
+  | AddFloat of float * float
+  | SubFloat of float * float
+  | MulFloat of float * float
+  | DivFloat of float * float
 
 type exps =
-  | Exp_fun of string * ident * exps (* name + arg + body *)
-  | Exp_letbinding of ident * exps (* name + value *)
+  | Exp_fun of ident * exps (* arg + body *)
+  | Exp_letbinding of ident * exps * exps option (* name + value + next exp *)
   | Exp_ident of ident
   | Exp_literal of literal
   | Exp_seq of exps * exps
   | Exp_apply of ident * exps list
+  | Exp_binop of binop
+  | Exp_ifthenelse of exps * exps * exps
   | Exp_unit
 
 (* Application [f g ] *)
