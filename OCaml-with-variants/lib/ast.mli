@@ -14,14 +14,14 @@ type arg =
   | Lit of literal
 
 type binop =
-  | AddInt of int * int
-  | SubInt of int * int
-  | MulInt of int * int
-  | DivInt of int * int
-  | AddFloat of float * float
-  | SubFloat of float * float
-  | MulFloat of float * float
-  | DivFloat of float * float
+  | AddInt
+  | SubInt
+  | MulInt
+  | DivInt
+  | AddFloat
+  | SubFloat
+  | MulFloat
+  | DivFloat
 
 type exps =
   | Exp_fun of ident * exps (* arg + body *)
@@ -30,7 +30,7 @@ type exps =
   | Exp_literal of literal
   | Exp_seq of exps * exps
   | Exp_apply of ident * exps list
-  | Exp_binop of binop
+  | Exp_binop of binop * exps * exps
   | Exp_ifthenelse of exps * exps * exps
   | Exp_unit
 

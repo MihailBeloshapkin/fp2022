@@ -127,16 +127,16 @@ module OCamlParser = struct
       Exp_letbinding (name, func, next_ex)
   ;;
 
-  let binop_constructor (Exp_literal op1) operator (Exp_literal op2) =
-    match operator, op1, op2 with
-    | "+", Int i1, Int i2 -> Exp_binop (AddInt (i1, i2))
-    | "-", Int i1, Int i2 -> Exp_binop (SubInt (i1, i2))
-    | "*", Int i1, Int i2 -> Exp_binop (MulInt (i1, i2))
-    | "/", Int i1, Int i2 -> Exp_binop (DivInt (i1, i2))
-    | "+.", Float i1, Float i2 -> Exp_binop (AddFloat (i1, i2))
-    | "-.", Float i1, Float i2 -> Exp_binop (SubFloat (i1, i2))
-    | "*.", Float i1, Float i2 -> Exp_binop (MulFloat (i1, i2))
-    | "/.", Float i1, Float i2 -> Exp_binop (DivFloat (i1, i2))
+  let binop_constructor op1 operator op2 =
+    match operator with
+    | "+" -> Exp_binop (AddInt, op1, op2)
+    | "-" -> Exp_binop (SubInt, op1, op2)
+    | "*" -> Exp_binop (MulInt, op1, op2)
+    | "/" -> Exp_binop (DivInt, op1, op2)
+    | "+." -> Exp_binop (AddFloat, op1, op2)
+    | "-." -> Exp_binop (SubFloat, op1, op2)
+    | "*." -> Exp_binop (MulFloat, op1, op2)
+    | "/." -> Exp_binop (DivFloat, op1, op2)
     | _ -> failwith "Parsing error"
   ;;
 
@@ -149,7 +149,7 @@ module OCamlParser = struct
   let arithm_parser =
     let c = choice [ (new_ident >>= fun res -> return @@ Exp_ident res); literals ] in
     lift3
-      (fun arg1 operation arg2 -> Exp_apply (operation, [ arg1; arg2 ]))
+      binop_constructor
       (space *> c <* space)
       BinOperators.ar_operators
       (space *> c <* space)
@@ -195,8 +195,8 @@ module OCamlParser = struct
 
   let base =
     choice
-      [ literals
-      ; arithm_parser
+      [ arithm_parser
+      ; literals
       ; decl
       ; appl
       ; (new_ident >>= fun res -> return @@ Exp_ident res)
@@ -254,7 +254,11 @@ module Printer = struct
       printf "(Apply: name=%s Args:" name;
       List.iter ~f:print_ast arg_list;
       printf ")"
-    | Exp_binop bin -> ()
+    | Exp_binop (b, l, r) ->
+      printf "Binop(";
+      print_ast l;
+      print_ast r;
+      printf ")"
     | _ -> printf "Unrecognised Ast Node"
   ;;
 end
@@ -269,7 +273,7 @@ let print_result = function
   | Result.Error s -> printf "SOMETHING WENT WRONG: %s\n" s
 ;;
 
-let () = parse_exp "let f x = 10;;" |> print_result
+let () = parse_exp "let f x = x + 10;;" |> print_result
 
 (*
 let p2 = parse_exp "1 + 2"
