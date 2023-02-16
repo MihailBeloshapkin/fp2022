@@ -22,6 +22,7 @@ module Interpreter = struct
       | Int of int
       | Float of float
       | String of string
+      | Bool of bool
       | Func of exps
   end
 
@@ -40,6 +41,7 @@ module Interpreter = struct
 
   let eval_binop op l r =
     let open ContextData in
+    let open Caml in
     match op, l, r with
     | AddInt, Int x, Int y -> return (Int (x + y))
     | SubInt, Int x, Int y -> return (Int (x - y))
@@ -49,6 +51,8 @@ module Interpreter = struct
     | SubFloat, Float x, Float y -> return (Float (x -. y))
     | MulFloat, Float x, Float y -> return (Float (x *. y))
     | DivFloat, Float x, Float y -> return (Float (x /. y))
+    | Eq, Int x, Int y -> return (Bool (x = y))
+    | Eq, Float x, Float y -> return (Bool (x = y))
     | _ -> fail "Unrecognised operation"
   ;;
 
@@ -63,7 +67,7 @@ module Interpreter = struct
       return res
     | Exp_ident id -> return @@ get_val_from_ctx ctx id
     | Exp_seq (e1, e2) -> return (ContextData.Int 1)
-    | Exp_letbinding (id, ex, Some next) ->
+    | Exp_letbinding (id, ex, next) ->
       let* _, updated_ctx = eval_let ctx (id, ex) in
       return updated_ctx >>= fun s -> eval s next
     | Exp_apply (id, args) ->
@@ -85,6 +89,15 @@ module Interpreter = struct
       in
       result
     (*| Exp_ident i -> *)
+    | Exp_ifthenelse (cond, f_branch, s_branch) ->
+      let* cond_eval = eval ctx cond in
+      let result =
+        match cond_eval with
+        | ContextData.Bool true -> eval ctx f_branch
+        | ContextData.Bool false -> eval ctx s_branch
+        | _ -> fail "oh"
+      in
+      result
     | _ -> fail "not impl"
 
   and eval_let ctx (id, ex) =
@@ -147,7 +160,7 @@ let p =
              , Exp_letbinding
                  ( "v"
                  , Exp_literal (Int 1)
-                 , Some (Exp_binop (AddInt, Exp_ident "x", Exp_ident "v")) ) )) )
+                 , Exp_binop (AddInt, Exp_ident "x", Exp_ident "v") ) )) )
     ]
     (Exp_apply ("f", [ Exp_literal (Int 30) ]))
 ;;
@@ -164,17 +177,42 @@ let p =
              , Exp_letbinding
                  ( "v"
                  , Exp_literal (Int 1)
-                 , Some
-                     (Exp_letbinding
-                        ( "r"
-                        , Exp_literal (Int 4)
-                        , Some
-                            (Exp_binop
-                               ( AddInt
-                               , Exp_binop (MulInt, Exp_ident "x", Exp_ident "v")
-                               , Exp_ident "r" )) )) ) )) )
+                 , Exp_letbinding
+                     ( "r"
+                     , Exp_literal (Int 4)
+                     , Exp_binop
+                         ( AddInt
+                         , Exp_binop (MulInt, Exp_ident "x", Exp_ident "v")
+                         , Exp_ident "r" ) ) ) )) )
     ]
-    (Exp_apply ("f", [Exp_literal (Int 30)]))
+    (Exp_apply ("f", [ Exp_literal (Int 30) ]))
 ;;
 
 let%test _ = p = Ok (Interpreter.ContextData.Int 34)
+
+let p =
+  Interpreter.eval
+    [ ( "incr"
+      , Interpreter.ContextData.Func
+          (Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1)))) )
+    ]
+    (Exp_binop (AddInt, Exp_literal (Int 7), Exp_apply ("incr", [ Exp_literal (Int 30) ])))
+;;
+
+let%test _ = p = Ok (Interpreter.ContextData.Int 38)
+
+let p =
+  Interpreter.eval
+    [ ( "func"
+      , Interpreter.ContextData.Func
+          (Exp_fun
+             ( "x"
+             , Exp_ifthenelse
+                 ( Exp_binop (Eq, Exp_ident "x", Exp_literal (Int 1))
+                 , Exp_literal (Int 30)
+                 , Exp_ident "x" ) )) )
+    ]
+    (Exp_apply ("func", [ Exp_literal (Int 1) ]))
+;;
+
+let%test _ = p = Ok (Interpreter.ContextData.Int 30)
