@@ -24,6 +24,7 @@ module Interpreter = struct
       | String of string
       | Bool of bool
       | Func of exps
+      | Undefined
   end
 
   let get_val_from_ctx ctx name =
@@ -52,7 +53,8 @@ module Interpreter = struct
     | MulFloat, Float x, Float y -> return (Float (x *. y))
     | DivFloat, Float x, Float y -> return (Float (x /. y))
     | Eq, Int x, Int y -> return (Bool (x = y))
-    | Eq, Float x, Float y -> return (Bool (x = y))
+    | Leq, Int x, Int y -> return (Bool (x < y))
+    | Geq, Int x, Int y -> return (Bool (x > y))
     | _ -> fail "Unrecognised operation"
   ;;
 
@@ -67,7 +69,7 @@ module Interpreter = struct
       return res
     | Exp_ident id -> return @@ get_val_from_ctx ctx id
     | Exp_seq (e1, e2) -> return (ContextData.Int 1)
-    | Exp_letbinding (id, ex, next) ->
+    | Exp_letbinding (_, id, ex, next) ->
       let* _, updated_ctx = eval_let ctx (id, ex) in
       return updated_ctx >>= fun s -> eval s next
     | Exp_apply (id, args) ->
@@ -98,6 +100,9 @@ module Interpreter = struct
         | _ -> fail "oh"
       in
       result
+    | Exp_match (e, cases) ->
+      let* result = eval ctx e in
+      return result
     | _ -> fail "not impl"
 
   and eval_let ctx (id, ex) =
@@ -107,13 +112,7 @@ module Interpreter = struct
   ;;
 end
 
-let eval ast =
-  let open Interpreter in
-  let res = eval [] (Exp_binop (AddInt, Exp_literal (Int 30), Exp_literal (Int 30))) in
-  match res with
-  | Ok (ContextData.Int 60) -> printf "OKAY"
-  | _ -> ()
-;;
+let eval = Interpreter.eval
 
 let p =
   Interpreter.eval [] (Exp_binop (AddInt, Exp_literal (Int 30), Exp_literal (Int 30)))
@@ -158,7 +157,8 @@ let p =
           (Exp_fun
              ( "x"
              , Exp_letbinding
-                 ( "v"
+                 ( NonRec
+                 , "v"
                  , Exp_literal (Int 1)
                  , Exp_binop (AddInt, Exp_ident "x", Exp_ident "v") ) )) )
     ]
@@ -175,10 +175,12 @@ let p =
           (Exp_fun
              ( "x"
              , Exp_letbinding
-                 ( "v"
+                 ( NonRec
+                 , "v"
                  , Exp_literal (Int 1)
                  , Exp_letbinding
-                     ( "r"
+                     ( NonRec
+                     , "r"
                      , Exp_literal (Int 4)
                      , Exp_binop
                          ( AddInt
@@ -216,3 +218,19 @@ let p =
 ;;
 
 let%test _ = p = Ok (Interpreter.ContextData.Int 30)
+
+let p =
+  Interpreter.eval
+    [ ( "fact"
+      , Interpreter.ContextData.Func
+          (Exp_fun
+             ( "n"
+             , Exp_ifthenelse
+                 ( Exp_binop (Leq, Exp_ident "n", Exp_literal (Int 2))
+                 , Exp_literal (Int 1)
+                 , Exp_binop (MulInt, Exp_ident "n", Exp_apply ("fact", [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ])) ) )) )
+    ]
+    (Exp_apply ("fact", [ Exp_literal (Int 5) ]))
+;;
+
+let%test _ = p = Ok (Interpreter.ContextData.Int 120)

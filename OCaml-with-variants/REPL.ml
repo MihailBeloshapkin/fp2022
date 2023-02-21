@@ -1,5 +1,5 @@
 open Base
-open Ocaml_with_var
+open Ocaml_with_var.Repl
 
 let run_repl _ =
   Caml.Format.eprintf "OCaml-style toplevel (ocamlc, utop) is not implemented"
@@ -59,3 +59,10 @@ let () =
   in
   (if opts.batch then run_single else run_repl) eval
   *)
+
+let () =
+  let input = read_line () in
+  Caml.Format.printf "input: %s" input;
+  
+  ()
+;;

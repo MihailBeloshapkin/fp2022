@@ -112,7 +112,8 @@ module OCamlParser = struct
 
   let rec link_exps e_list =
     match e_list with
-    | Exp_letbinding (name, body, _) :: t -> Exp_letbinding (name, body, link_exps t)
+    | Exp_letbinding (is_rec, name, body, _) :: t ->
+      Exp_letbinding (is_rec, name, body, link_exps t)
     | e :: [] -> e
     | h :: t -> Exp_seq (h, link_exps t)
     | _ -> failwith "empty list"
@@ -127,10 +128,10 @@ module OCamlParser = struct
 
   let let_binding_constructor name arg_list body next_ex =
     match arg_list with
-    | [] -> Exp_letbinding (name, body, next_ex)
+    | [] -> Exp_letbinding (NonRec, name, body, next_ex)
     | _ ->
       let func = fun_constructor arg_list body in
-      Exp_letbinding (name, func, next_ex)
+      Exp_letbinding (NonRec, name, func, next_ex)
   ;;
 
   let binop_constructor op1 operator op2 =
@@ -287,6 +288,13 @@ module OCamlParser = struct
         (d.e d)
         (token "else" *> d.e d)
     in
+    (*
+    let match_parser d = 
+      fix
+      @@ fun _ -> 
+      lift3
+        (fun exp )
+    in*)
     let e d =
       letbinding_parser d
       <|> ifthelse_parser d
@@ -305,8 +313,9 @@ module OCamlParser = struct
 
   let hl_fun_decl =
     lift3
-      (fun a b c -> Declaration (a, fun_constructor b c))
-      (token "let" *> space1 *> new_ident)
+      (fun (is_rec, name) b c -> Declaration (is_rec, name, fun_constructor b c))
+      (token "let" *> option NonRec (space1 *> string "rec" >>= fun _ -> return @@ Rec)
+      >>= fun is_rec -> space1 *> new_ident >>= fun name -> return (is_rec, name))
       (many1 (space1 *> new_ident))
       (space *> token "=" *> space *> e_p <* space <* string ";;" <* space)
   ;;
@@ -346,7 +355,7 @@ module Printer = struct
   ;;
 
   let rec print_ast = function
-    | Exp_letbinding (id, value, _) ->
+    | Exp_letbinding (_, id, value, _) ->
       printf "(LetB: Name=%s value=" id;
       print_ast value;
       printf ")"
@@ -418,14 +427,14 @@ let%test _ =
 ;;
 
 let p2 = parse_exp "a = 1"
-let p2 = parse_exp "let f x = if a = 1 then 1 else n * (f (n + 1));;"
+let p2 = parse_exp "let rec f x = if a = 1 then 1 else n * (f (n + 1));;"
 
 let%test _ =
   match p2 with
   | Result.Error m ->
     printf "Error: %s" m;
     false
-  | Result.Ok (Declaration (name, r)) ->
+  | Result.Ok (Declaration (_, name, r)) ->
     printf "Name: %s" name;
     Printer.print_ast r;
     true
@@ -497,6 +506,7 @@ let%test _ =
     true
 ;;
 *)
+
 let%test _ =
   p2
   = Result.Ok
@@ -510,7 +520,8 @@ let%test _ =
   p2
   = Result.Ok
       (Declaration
-         ( "f"
+         ( NonRec
+         , "f"
          , Exp_fun
              ( "x"
              , Exp_ifthenelse
@@ -526,7 +537,7 @@ let%test _ =
   | Result.Error m ->
     printf "Error: %s" m;
     false
-  | Result.Ok (Declaration (name, r)) ->
+  | Result.Ok (Declaration (_, name, r)) ->
     printf "Name: %s" name;
     Printer.print_ast r;
     true
