@@ -60,9 +60,6 @@ let () =
   (if opts.batch then run_single else run_repl) eval
   *)
 
-let () =
-  let input = read_line () in
-  Caml.Format.printf "input: %s" input;
-  
-  ()
-;;
+let _ = run []
+(*
+let _ = run0 "let fact x = if x < 2 then 1 else x * (fact (x - 1));;" "fact 5"*)

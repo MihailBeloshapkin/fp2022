@@ -191,20 +191,6 @@ module OCamlParser = struct
       (space *> c <* space)
   ;;
 
-  (*
-  let letbinding_parser =
-    lift3
-      (fun name args body -> let_binding_constructor name args body None)
-      (token "let" *> space1 *> new_ident)
-      (many (space1 *> new_ident))
-      (space
-       *> token "="
-       *> space
-       *> choice [ binop_parser; literal_parser; appl_parser; unit_parser ]
-      <* space
-      <* token "in")
-  ;;
-*)
   let ifthenelse_parser =
     let cond_variants = [ appl_parser; binop_parser; ident_parser; literal_parser ] in
     let branch_variants =
@@ -427,7 +413,7 @@ let%test _ =
 ;;
 
 let p2 = parse_exp "a = 1"
-let p2 = parse_exp "let rec f x = if a = 1 then 1 else n * (f (n + 1));;"
+let p2 = parse_exp "let rec fact n = if n < 2 then 1 else n * (fact (n - 1));;"
 
 let%test _ =
   match p2 with
@@ -474,7 +460,7 @@ let%test _ =
   p2 = Result.Ok (Application (Exp_binop (AddInt, Exp_ident "a", Exp_literal (Int 2))))
 ;;
 
-let p2 = parse_exp "1.5 +. 2.3"
+let p2 = parse_exp "1.5 +. 2.3  \n\n"
 
 let%test _ =
   p2
