@@ -30,9 +30,9 @@ type binop =
   | DivFloat
   | And
   | Or
-  | Leq
-  | Geq
-  | Eq
+  | LeqInt
+  | GeqInt
+  | EqInt
 
 type exps =
   | Exp_fun of ident * exps (* arg + body *)
@@ -45,8 +45,8 @@ type exps =
   | Exp_ifthenelse of exps * exps * exps
   | Exp_match of exps * case list
   | Exp_unit
-and case = exps * exps
 
+and case = exps * exps
 
 type top_level_expressions =
   | Declaration of exp_type * string * exps

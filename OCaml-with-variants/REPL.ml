@@ -1,5 +1,6 @@
 open Base
 open Ocaml_with_var.Repl
+open Ocaml_with_var.Infer
 
 let run_repl _ =
   Caml.Format.eprintf "OCaml-style toplevel (ocamlc, utop) is not implemented"
@@ -48,18 +49,47 @@ let () =
     "Read-Eval-Print-Loop for Utyped Lambda Calculus"
 ;;
 
-(*
-  let eval =
-    Lambda.apply_strat
-      (match opts.stra with
-       | NO -> Lambda.nor_strat
-       | CBV -> Lambda.cbv_strat
-       | AO -> Lambda.ao_strat
-       | CBN -> Lambda.cbn_strat)
-  in
-  (if opts.batch then run_single else run_repl) eval
-  *)
+let try_infer e = infer e TypeEnv.empty
 
-let _ = run []
+let ex1 =
+  try_infer
+    (Exp_ifthenelse
+       ( Exp_literal (Bool true)
+       , Exp_binop (MulFloat, Exp_literal (Float 1.), Exp_literal (Float 0.))
+       , Exp_binop (AddFloat, Exp_literal (Float 31.), Exp_literal (Float 0.)) ))
+;;
+
+let ex2 = 
+  try_infer
+    (Exp_fun ("n", Exp_ifthenelse ( Exp_ident "n", Exp_literal (Int 1), Exp_literal (Int 30))))
+;;
+
+let ex3 = 
+  try_infer
+    (Exp_fun ("n", Exp_ifthenelse ( Exp_binop (LeqInt, Exp_ident "n", Exp_literal (Int 2)), Exp_literal (Int 1), Exp_binop (MulInt, Exp_ident "n", Exp_literal (Int 30)))))
+;;
+
+let ex4 = 
+  try_infer
+    (Exp_fun ("n", Exp_fun ("m", Exp_binop (AddInt, Exp_ident "m", Exp_ident "n"))))
+;;
+
+let ex5 =
+  try_infer
+    (Exp_letbinding (NonRec, "f", (Exp_fun ("n", Exp_fun ("m", Exp_fun ("k", Exp_ident "n")))), Exp_apply ("f", [ Exp_literal (Float 30.) ])))
+
+let ex7 = 
+  try_infer
+
+let () =
+  let res =
+    try_infer
+      (Exp_letbinding (Rec, "a", Exp_literal (Float 4.), 
+      Exp_letbinding (Rec, "b", Exp_literal (Float 5.), Exp_binop (AddFloat, Exp_ident "a", Exp_ident "b"))))
+  in
+  match ex5 with
+  | Result.Ok res -> print_sig res;
+  | _ -> Caml.Format.printf "Failed inference"
+;;
 (*
 let _ = run0 "let fact x = if x < 2 then 1 else x * (fact (x - 1));;" "fact 5"*)

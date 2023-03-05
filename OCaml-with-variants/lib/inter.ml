@@ -52,9 +52,9 @@ module Interpreter = struct
     | SubFloat, Float x, Float y -> return (Float (x -. y))
     | MulFloat, Float x, Float y -> return (Float (x *. y))
     | DivFloat, Float x, Float y -> return (Float (x /. y))
-    | Eq, Int x, Int y -> return (Bool (x = y))
-    | Leq, Int x, Int y -> return (Bool (x < y))
-    | Geq, Int x, Int y -> return (Bool (x > y))
+    | EqInt, Int x, Int y -> return (Bool (x = y))
+    | LeqInt, Int x, Int y -> return (Bool (x < y))
+    | GeqInt, Int x, Int y -> return (Bool (x > y))
     | _ -> fail "Unrecognised operation"
   ;;
 
@@ -210,7 +210,7 @@ let p =
           (Exp_fun
              ( "x"
              , Exp_ifthenelse
-                 ( Exp_binop (Eq, Exp_ident "x", Exp_literal (Int 1))
+                 ( Exp_binop (EqInt, Exp_ident "x", Exp_literal (Int 1))
                  , Exp_literal (Int 30)
                  , Exp_ident "x" ) )) )
     ]
@@ -226,9 +226,15 @@ let p =
           (Exp_fun
              ( "n"
              , Exp_ifthenelse
-                 ( Exp_binop (Leq, Exp_ident "n", Exp_literal (Int 2))
+                 ( Exp_binop (LeqInt, Exp_ident "n", Exp_literal (Int 2))
                  , Exp_literal (Int 1)
-                 , Exp_binop (MulInt, Exp_ident "n", Exp_apply ("fact", [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ])) ) )) )
+                 , Exp_binop
+                     ( MulInt
+                     , Exp_ident "n"
+                     , Exp_apply
+                         ( "fact"
+                         , [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ] ) )
+                 ) )) )
     ]
     (Exp_apply ("fact", [ Exp_literal (Int 5) ]))
 ;;

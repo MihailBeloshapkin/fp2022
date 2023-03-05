@@ -146,9 +146,9 @@ module OCamlParser = struct
     | "/." -> Exp_binop (DivFloat, op1, op2)
     | "&&" -> Exp_binop (And, op1, op2)
     | "||" -> Exp_binop (Or, op1, op2)
-    | "<" -> Exp_binop (Leq, op1, op2)
-    | ">" -> Exp_binop (Geq, op1, op2)
-    | "=" -> Exp_binop (Eq, op1, op2)
+    | "<" -> Exp_binop (LeqInt, op1, op2)
+    | ">" -> Exp_binop (GeqInt, op1, op2)
+    | "=" -> Exp_binop (EqInt, op1, op2)
     | _ -> failwith "Parsing error"
   ;;
 
@@ -167,60 +167,6 @@ module OCamlParser = struct
   ;;
 
   let arg_of_application = choice [ ident_parser; literal_parser ]
-
-  let appl_parser =
-    lift2
-      (fun id li -> Exp_apply (id, li))
-      new_ident
-      (many1 (space1 *> arg_of_application) <* space)
-  ;;
-
-  let binop_parser =
-    let open BinOperators in
-    let c =
-      choice
-        [ appl_parser
-        ; (new_ident >>= fun res -> return @@ Exp_ident res)
-        ; literal_parser
-        ]
-    in
-    lift3
-      binop_constructor
-      (space *> c <* space)
-      (choice [ ar_operators; log_operators; compare_operators ])
-      (space *> c <* space)
-  ;;
-
-  let ifthenelse_parser =
-    let cond_variants = [ appl_parser; binop_parser; ident_parser; literal_parser ] in
-    let branch_variants =
-      [ appl_parser
-      ; binop_parser (*    ; letbinding_parser *)
-      ; (new_ident >>= fun res -> return @@ Exp_ident res)
-      ; literal_parser
-      ]
-    in
-    lift3
-      (fun cond fbranch sbranch -> if_then_else_constructor cond fbranch sbranch)
-      (token "if" *> choice cond_variants <* token "then")
-      (choice branch_variants)
-      (token "else" *> choice branch_variants)
-  ;;
-
-  let base =
-    choice
-      [ ifthenelse_parser
-      ; binop_parser
-      ; literal_parser (*    ; letbinding_parser *)
-      ; appl_parser
-      ; ident_parser
-      ]
-  ;;
-
-  let fun_body =
-    many (base <* char '\n' <|> base <* space1 <|> base)
-    >>= fun res -> return @@ link_exps res
-  ;;
 
   type dispatch =
     { e : dispatch -> exps t
@@ -250,6 +196,7 @@ module OCamlParser = struct
           many1 (app_arg_p <|> (space1 *> char '(' *> d.e d <* space <* char ')'))
           >>= fun args -> return @@ Exp_apply (n, args))
         ]
+      <* space
       <?> "app_parser"
     in
     let binop_parser d =
@@ -306,16 +253,7 @@ module OCamlParser = struct
       (space *> token "=" *> space *> e_p <* space <* string ";;" <* space)
   ;;
 
-  let p =
-    choice
-      [ hl_fun_decl
-      ; (e_p
-        >>= fun res ->
-        return
-        @@ Application res (*; ifthenelse_parser; binop_parser; hl_fun_decl; appl_parser*)
-        )
-      ]
-  ;;
+  let p = choice [ hl_fun_decl; (e_p >>= fun res -> return @@ Application res) ]
 end
 
 module Printer = struct
@@ -460,6 +398,10 @@ let%test _ =
   p2 = Result.Ok (Application (Exp_binop (AddInt, Exp_ident "a", Exp_literal (Int 2))))
 ;;
 
+let p2 = parse_exp "fact 5 "
+
+let%test _ = p2 = Result.Ok (Application (Exp_apply ("fact", [ Exp_literal (Int 5) ])))
+
 let p2 = parse_exp "1.5 +. 2.3  \n\n"
 
 let%test _ =
@@ -471,12 +413,28 @@ let%test _ =
 
 let p2 = parse_exp "a < b"
 
-let%test _ = p2 = Result.Ok (Application (Exp_binop (Leq, Exp_ident "a", Exp_ident "b")))
+let%test _ = p2 = Result.Ok (Application (Exp_binop (LeqInt, Exp_ident "a", Exp_ident "b")))
 
 let p2 = parse_exp "a > 1.0"
 
 let%test _ =
-  p2 = Result.Ok (Application (Exp_binop (Geq, Exp_ident "a", Exp_literal (Float 1.0))))
+  p2 = Result.Ok (Application (Exp_binop (GeqInt, Exp_ident "a", Exp_literal (Float 1.0))))
+;;
+
+let p2 = parse_exp "let incr x = x + 1;;"
+
+let%test _ =
+  match p2 with
+  | Result.Error m ->
+    printf "Error: %s" m;
+    false
+  | Result.Ok (Declaration (_, name, r)) ->
+    printf "Name: %s" name;
+    Printer.print_ast r;
+    true
+  | Result.Ok (Application r) ->
+    Printer.print_ast r;
+    true
 ;;
 
 let p2 = parse_exp "a = incr 30"
@@ -497,7 +455,7 @@ let%test _ =
   p2
   = Result.Ok
       (Application
-         (Exp_binop (Eq, Exp_ident "a", Exp_apply ("incr", [ Exp_literal (Int 30) ]))))
+         (Exp_binop (EqInt, Exp_ident "a", Exp_apply ("incr", [ Exp_literal (Int 30) ]))))
 ;;
 
 let p2 = parse_exp "let f x = if x = 1 then 30 else x ;;"
@@ -511,7 +469,7 @@ let%test _ =
          , Exp_fun
              ( "x"
              , Exp_ifthenelse
-                 ( Exp_binop (Eq, Exp_ident "x", Exp_literal (Int 1))
+                 ( Exp_binop (EqInt, Exp_ident "x", Exp_literal (Int 1))
                  , Exp_literal (Int 30)
                  , Exp_ident "x" ) ) ))
 ;;
@@ -531,144 +489,3 @@ let%test _ =
     Printer.print_ast r;
     true
 ;;
-
-(*
-let p2 = parse_exp "let f q w = let res = 10 in w;;"
-
-let%test _ =
-  match p2 with
-  | Result.Error m ->
-    printf "Error: %s" m;
-    false
-  | Result.Ok r ->
-    Printer.print_ast r;
-    true
-;;
-
-let%test _ =
-  p2
-  = Result.Ok
-      (Exp_letbinding
-         ( "f"
-         , Exp_fun
-             ( "q"
-             , Exp_fun
-                 ( "w"
-                 , Exp_letbinding
-                     ( "res"
-                     , Exp_binop (AddInt, Exp_ident "w", Exp_ident "q")
-                     , Some (Exp_ident "res") ) ) )
-         , None ))
-;;
-
-
-*)
-
-(*
-let p2 = parse_exp "let fact n = if a < 2 then s else 1 * fact n;;"
-
-let%test _ =
-  match p2 with
-  | Result.Error m ->
-    printf "Error: %s" m;
-    false
-  | Result.Ok r ->
-    Printer.print_ast r;
-    true
-;;
-
-(*
-let%test _ = p2 = Result.Ok (Exp_ifthenelse (Exp_binop (Eq, Exp_ident "a", Exp_literal (Int 1)), Exp_ident "b", Exp_ident "c"))
-*)
-let p2 = parse_exp "f a + g b"
-
-let%test _ =
-  p2
-  = Result.Ok
-      (Exp_binop
-         (AddInt, Exp_apply ("f", [ Exp_ident "a" ]), Exp_apply ("g", [ Exp_ident "b" ])))
-;;
-
-
-let p2 = parse_exp "a + 2"
-
-let%test _ = p2 = Result.Ok (Exp_binop (AddInt, Exp_ident "a", Exp_literal (Int 2)))
-
-
-let p2 = parse_exp "1.5 +. 2.3"
-
-let%test _ =
-  p2 = Result.Ok (Exp_binop (AddFloat, Exp_literal (Float 1.5), Exp_literal (Float 2.3)))
-;;
-
-let p2 = parse_exp "a < b"
-
-let%test _ = p2 = Result.Ok (Exp_binop (Leq, Exp_ident "a", Exp_ident "b"))
-
-let p2 = parse_exp "a > 1.0"
-
-let%test _ = p2 = Result.Ok (Exp_binop (Geq, Exp_ident "a", Exp_literal (Float 1.0)))
-
-
-let p2 = parse_exp "let incr x = x + 1;;"
-
-let%test _ =
-  p2
-  = Result.Ok
-      (Exp_letbinding
-         ( "incr"
-         , Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1)))
-         , None ))
-;;
-
-let p2 = parse_exp "let c s = concat s \"ml\";;"
-
-let%test _ =
-  p2
-  = Result.Ok
-      (Exp_letbinding
-         ( "c"
-         , Exp_fun
-             ("s", Exp_apply ("concat", [ Exp_ident "s"; Exp_literal (String "ml") ]))
-         , None ))
-;;
-
-let p2 = parse_exp "c \"asdf\""
-
-let%test _ = p2 = Result.Ok (Exp_apply ("c", [ Exp_literal (String "asdf") ]))
-
-let p2 = parse_exp "let f q w = let res = w + q in res;;"
-
-let%test _ =
-  p2
-  = Result.Ok
-      (Exp_letbinding
-         ( "f"
-         , Exp_fun
-             ( "q"
-             , Exp_fun
-                 ( "w"
-                 , Exp_letbinding
-                     ( "res"
-                     , Exp_binop (AddInt, Exp_ident "w", Exp_ident "q")
-                     , Some (Exp_ident "res") ) ) )
-         , None ))
-;;
-(*
-let p2 = parse_exp "let f x = if x = 1 then 30 else x ;;"
-
-let%test _ =
-  p2
-  = Result.Ok
-      (Exp_letbinding
-         ( "f"
-         , Exp_fun
-             ( "x"
-             , Exp_ifthenelse
-                 ( Exp_binop (Eq, Exp_ident "x", Exp_literal (Int 1))
-                 , Exp_literal (Int 30)
-                 , Exp_ident "x" ) )
-         , None ))
-;;
-*)
-*)

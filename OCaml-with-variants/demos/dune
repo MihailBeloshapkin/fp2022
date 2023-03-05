@@ -5,16 +5,16 @@
  (libraries OCaml-with-variants.OCamli))
 
 (executable
- (name demoNO)
- (modules demoNO)
- (public_name demoNO)
+ (name declAppl)
+ (modules declAppl)
+ (public_name declAppl)
  (libraries OCaml-with-variants.OCamli))
 
 (executable
- (name demoParse)
- (modules demoParse)
- (public_name demoParse)
+ (name simpleFuncs)
+ (modules simpleFuncs)
+ (public_name simpleFuncs)
  (libraries OCaml-with-variants.OCamli stdio))
 
 (cram
- (deps ./demoNO.exe ./demoAO.exe ./demoParse.exe ../REPL.exe))
+ (deps ./declAppl.exe ./demoAO.exe ./simpleFuncs.exe ../REPL.exe))
