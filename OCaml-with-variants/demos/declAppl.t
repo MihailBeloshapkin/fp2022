@@ -10,14 +10,13 @@ Use `dune promote` after you change things that should runned
   > EOF
   120
 
-
   $ ./declAppl.exe <<-EOF
   > (fact 5) + (fact 7)
   > EOF
   5160
-
-
+  
   $ ./declAppl.exe <<-EOF
   > (fact (fact 3))
   > EOF
   720
+  

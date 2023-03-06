@@ -210,6 +210,7 @@ end = struct
       let* subs2 = unify (apply subs1 r1) (apply subs1 r2) in
       compose subs1 subs2
     | _ -> fail Unification_failed
+
   and extend k v s =
     match find k s with
     | None ->
@@ -323,7 +324,7 @@ let rec print_sig = function
   | TVar i -> printf "%i " i
 ;;
 
-let rec init_infer =
+let init_infer =
   let rec (helper : TypeEnv.t -> exps -> (Subst.t * typ) R.t) =
    fun env -> function
     | Exp_literal c ->
@@ -353,16 +354,9 @@ let rec init_infer =
          let* final = Subst.compose_all [ arg1_sub; arg2_sub; arg1_sub'; arg2_sub' ] in
          return (final, TBase Tbool)
        | _ -> fail Unification_failed)
-    | Exp_apply (name, a :: _) ->
-      let* fun_sub, fun_t = lookup_env name env in
-      let* a_sub, a_t = helper (TypeEnv.apply fun_sub env) a in
-      let* var_t = fresh_var in
-      let* unified_sub =
-        unify (Arrow (a_t, var_t)) (Subst.apply a_sub fun_t) 
-      in
-      let res_typ = Subst.apply unified_sub var_t in
-      let* final = Subst.compose_all [ fun_sub; a_sub; unified_sub] in 
-      return (final, res_typ)
+    | Exp_apply (name, arg_list) ->
+      let result = infer_app name env (List.rev arg_list) in
+      result
     | Exp_fun (name, exp) ->
       let* var_typ = fresh_var in
       let env = TypeEnv.extend env name (Base.Set.empty (module Base.Int), var_typ) in
@@ -406,11 +400,34 @@ let rec init_infer =
       in
       return (final_sub, Subst.apply final_sub fst_branch_t)
     | _ -> fail Unification_failed
+  and infer_app name env = function
+    | [ a ] ->
+      let* fun_sub, fun_t = lookup_env name env in
+      let* a_sub, a_t = helper (TypeEnv.apply fun_sub env) a in
+      let* var_t = fresh_var in
+      let* unified_sub = unify (Arrow (a_t, var_t)) (Subst.apply a_sub fun_t) in
+      let res_typ = Subst.apply unified_sub var_t in
+      let* final = Subst.compose_all [ fun_sub; a_sub; unified_sub ] in
+      return (final, res_typ)
+    | h :: t ->
+      let* fun_sub, fun_t = infer_app name env t in
+      let* a_sub, a_t = helper (TypeEnv.apply fun_sub env) h in
+      let* var_t = fresh_var in
+      let* unified_sub = unify (Arrow (a_t, var_t)) (Subst.apply a_sub fun_t) in
+      let res_typ = Subst.apply unified_sub var_t in
+      let* final = Subst.compose_all [ fun_sub; a_sub; unified_sub ] in
+      return (final, res_typ)
+    | _ -> fail Unification_failed
   in
   helper
 ;;
 
 let infer exp env = Caml.Result.map snd (run (init_infer env exp))
+
+let infer_top_level_expressions env = function
+  | Declaration (ident, _, decl) ->  infer decl env
+  | Application exp -> infer exp env
+;;
 
 open Caml.Format
 

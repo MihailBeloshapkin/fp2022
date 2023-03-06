@@ -4,6 +4,15 @@ open Ast
 open Inter
 open Inter.Interpreter.ContextData
 open Stdio
+open Infer
+
+let try_infer e = infer e TypeEnv.empty
+
+let print_t = print_sig
+
+let print_result_of_inference = function
+  | Result.Ok res -> print_t res
+  | _ -> Caml.Format.printf "Type infetence failed"
 
 let get_exp_type = function
   | Exp_fun _ as f -> Func f

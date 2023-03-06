@@ -59,36 +59,59 @@ let ex1 =
        , Exp_binop (AddFloat, Exp_literal (Float 31.), Exp_literal (Float 0.)) ))
 ;;
 
-let ex2 = 
+let ex2 =
   try_infer
-    (Exp_fun ("n", Exp_ifthenelse ( Exp_ident "n", Exp_literal (Int 1), Exp_literal (Int 30))))
+    (Exp_fun
+       ("n", Exp_ifthenelse (Exp_ident "n", Exp_literal (Int 1), Exp_literal (Int 30))))
 ;;
 
-let ex3 = 
+let ex3 =
   try_infer
-    (Exp_fun ("n", Exp_ifthenelse ( Exp_binop (LeqInt, Exp_ident "n", Exp_literal (Int 2)), Exp_literal (Int 1), Exp_binop (MulInt, Exp_ident "n", Exp_literal (Int 30)))))
+    (Exp_fun
+       ( "n"
+       , Exp_ifthenelse
+           ( Exp_binop (LeqInt, Exp_ident "n", Exp_literal (Int 2))
+           , Exp_literal (Int 1)
+           , Exp_binop (MulInt, Exp_ident "n", Exp_literal (Int 30)) ) ))
 ;;
 
-let ex4 = 
+let ex4 =
   try_infer
     (Exp_fun ("n", Exp_fun ("m", Exp_binop (AddInt, Exp_ident "m", Exp_ident "n"))))
 ;;
 
 let ex5 =
   try_infer
-    (Exp_letbinding (NonRec, "f", (Exp_fun ("n", Exp_fun ("m", Exp_fun ("k", Exp_ident "n")))), Exp_apply ("f", [ Exp_literal (Float 30.) ])))
+    (Exp_letbinding
+       ( NonRec
+       , "f"
+       , Exp_fun ("n", Exp_fun ("m", Exp_binop (AddInt, Exp_ident "m", Exp_ident "n")))
+       , Exp_apply ("f", [ Exp_literal (Int 30); Exp_literal (Int 40) ]) ))
+;;
 
-let ex7 = 
-  try_infer
+let ex7 = try_infer
+      (Exp_letbinding
+       ( Rec
+       , "f"
+       , Exp_fun ("n", Exp_ifthenelse (Exp_binop (EqInt, Exp_literal (Int 1), Exp_ident "n"), Exp_literal (Int 1), Exp_apply ("f", [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ])))
+       , Exp_ident "f"))
+;;
 
 let () =
   let res =
     try_infer
-      (Exp_letbinding (Rec, "a", Exp_literal (Float 4.), 
-      Exp_letbinding (Rec, "b", Exp_literal (Float 5.), Exp_binop (AddFloat, Exp_ident "a", Exp_ident "b"))))
+      (Exp_letbinding
+         ( Rec
+         , "a"
+         , Exp_literal (Float 4.)
+         , Exp_letbinding
+             ( Rec
+             , "b"
+             , Exp_literal (Float 5.)
+             , Exp_binop (AddFloat, Exp_ident "a", Exp_ident "b") ) ))
   in
-  match ex5 with
-  | Result.Ok res -> print_sig res;
+  match ex7 with
+  | Result.Ok res -> print_sig res
   | _ -> Caml.Format.printf "Failed inference"
 ;;
 (*

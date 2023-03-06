@@ -413,12 +413,15 @@ let%test _ =
 
 let p2 = parse_exp "a < b"
 
-let%test _ = p2 = Result.Ok (Application (Exp_binop (LeqInt, Exp_ident "a", Exp_ident "b")))
+let%test _ =
+  p2 = Result.Ok (Application (Exp_binop (LeqInt, Exp_ident "a", Exp_ident "b")))
+;;
 
 let p2 = parse_exp "a > 1.0"
 
 let%test _ =
-  p2 = Result.Ok (Application (Exp_binop (GeqInt, Exp_ident "a", Exp_literal (Float 1.0))))
+  p2
+  = Result.Ok (Application (Exp_binop (GeqInt, Exp_ident "a", Exp_literal (Float 1.0))))
 ;;
 
 let p2 = parse_exp "let incr x = x + 1;;"

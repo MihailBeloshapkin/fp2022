@@ -48,8 +48,10 @@ type exps =
 
 and case = exps * exps
 
+type declaration = exp_type * string * exps
+
 type top_level_expressions =
-  | Declaration of exp_type * string * exps
+  | Declaration of declaration
   | Application of exps
 
 (* Application [f g ] *)
