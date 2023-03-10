@@ -1,7 +1,7 @@
 (library
  (name ocaml_with_var)
  (public_name OCaml-with-variants.OCamli)
- (modules Ast Utils Parser Inter Infer Repl)
+ (modules Ast Parser Inter Infer Utils Repl)
  (modules_without_implementation ast)
  (libraries base angstrom stdio)
  (preprocess

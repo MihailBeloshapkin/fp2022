@@ -221,13 +221,6 @@ module OCamlParser = struct
         (d.e d)
         (token "else" *> d.e d)
     in
-    (*
-    let match_parser d = 
-      fix
-      @@ fun _ -> 
-      lift3
-        (fun exp )
-    in*)
     let e d =
       letbinding_parser d
       <|> ifthelse_parser d
@@ -235,6 +228,7 @@ module OCamlParser = struct
       <|> app_parser d
       <|> literal_parser
       <|> ident_parser
+      <* space
       <?> "general expr parser"
     in
     let d d = app_parser d in
@@ -247,13 +241,16 @@ module OCamlParser = struct
   let hl_fun_decl =
     lift3
       (fun (is_rec, name) b c -> Declaration (is_rec, name, fun_constructor b c))
-      (token "let" *> option NonRec (space1 *> string "rec" >>= fun _ -> return @@ Rec)
+      (space
+       *> token "let"
+       *> option NonRec (space1 *> string "rec" >>= fun _ -> return @@ Rec)
       >>= fun is_rec -> space1 *> new_ident >>= fun name -> return (is_rec, name))
       (many1 (space1 *> new_ident))
       (space *> token "=" *> space *> e_p <* space <* string ";;" <* space)
   ;;
 
   let p = choice [ hl_fun_decl; (e_p >>= fun res -> return @@ Application res) ]
+  let parse_declarations = many hl_fun_decl
 end
 
 module Printer = struct
@@ -320,25 +317,34 @@ let parse_exp code =
   result
 ;;
 
+let parse_several_declarations code =
+  let result =
+    Angstrom.parse_string
+      OCamlParser.parse_declarations
+      ~consume:Angstrom.Consume.All
+      code
+  in
+  result
+;;
+
 let print_result = function
   | Result.Ok res -> Printer.print_ast res
   | Result.Error s -> printf "SOMETHING WENT WRONG: %s\n" s
 ;;
 
-let p2 = parse_exp "if a then b + k else c"
+let p2 = parse_several_declarations "let f x = x + 1;; let f x = x - 1;;"
 
-(*
 let%test _ =
   match p2 with
-  | Result.Error m ->
-    printf "Error: %s" m;
-    false
-  | Result.Ok r ->
-    Printer.print_ast r;
+  | Result.Ok res ->
+    print_int @@ List.length res;
     true
+  | _ ->
+    printf "FAIL";
+    false
 ;;
 
-*)
+let p2 = parse_exp "if a then b + k else c"
 
 let%test _ =
   p2
@@ -349,6 +355,10 @@ let%test _ =
             , Exp_binop (AddInt, Exp_ident "b", Exp_ident "k")
             , Exp_ident "c" )))
 ;;
+
+let p2 = parse_exp "fact "
+
+let%test _ = p2 = Result.Ok (Application (Exp_ident "fact"))
 
 let p2 = parse_exp "a = 1"
 let p2 = parse_exp "let rec fact n = if n < 2 then 1 else n * (fact (n - 1));;"
@@ -440,19 +450,23 @@ let%test _ =
     true
 ;;
 
-let p2 = parse_exp "a = incr 30"
+let p2 = parse_exp "let rec fix f x = f (fix f) x;;"
 
-(*
 let%test _ =
-  match p2 with
-  | Result.Error m ->
-    printf "Error: %s" m;
-    false
-  | Result.Ok r ->
-    Printer.print_ast r;
-    true
+  p2
+  = Result.Ok
+      (Declaration
+         ( Rec
+         , "fix"
+         , Exp_fun
+             ( "f"
+             , Exp_fun
+                 ( "x"
+                 , Exp_apply ("f", [ Exp_apply ("fix", [ Exp_ident "f" ]); Exp_ident "x" ])
+                 ) ) ))
 ;;
-*)
+
+let p2 = parse_exp "a = incr 30"
 
 let%test _ =
   p2

@@ -422,10 +422,16 @@ let init_infer =
   helper
 ;;
 
+let extent_type_env env name t =
+  TypeEnv.extend env name (Base.Set.empty (module Base.Int), t)
+;;
+
 let infer exp env = Caml.Result.map snd (run (init_infer env exp))
+let infer_with_env exp env = run (init_infer env exp)
 
 let infer_top_level_expressions env = function
-  | Declaration (ident, _, decl) ->  infer decl env
+  | Declaration (exp_type, name, decl) ->
+    infer (Exp_letbinding (exp_type, name, decl, Exp_ident name)) env
   | Application exp -> infer exp env
 ;;
 

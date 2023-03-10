@@ -1,6 +1,7 @@
 open Base
 open Ocaml_with_var.Repl
 open Ocaml_with_var.Infer
+open Ocaml_with_var.Parser
 
 let run_repl _ =
   Caml.Format.eprintf "OCaml-style toplevel (ocamlc, utop) is not implemented"
@@ -89,12 +90,38 @@ let ex5 =
        , Exp_apply ("f", [ Exp_literal (Int 30); Exp_literal (Int 40) ]) ))
 ;;
 
-let ex7 = try_infer
-      (Exp_letbinding
+let ex7 =
+  try_infer
+    (Exp_letbinding
        ( Rec
        , "f"
-       , Exp_fun ("n", Exp_ifthenelse (Exp_binop (EqInt, Exp_literal (Int 1), Exp_ident "n"), Exp_literal (Int 1), Exp_apply ("f", [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ])))
-       , Exp_ident "f"))
+       , Exp_fun
+           ( "n"
+           , Exp_ifthenelse
+               ( Exp_binop (EqInt, Exp_literal (Int 1), Exp_ident "n")
+               , Exp_literal (Int 1)
+               , Exp_apply
+                   ("f", [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ]) ) )
+       , Exp_ident "f" ))
+;;
+
+let ex8 =
+  try_infer
+    (Exp_letbinding
+       ( Rec
+       , "fact"
+       , Exp_fun
+           ( "n"
+           , Exp_ifthenelse
+               ( Exp_binop (LeqInt, Exp_ident "n", Exp_literal (Int 2))
+               , Exp_literal (Int 1)
+               , Exp_binop
+                   ( MulInt
+                   , Exp_ident "n"
+                   , Exp_apply
+                       ("fact", [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ])
+                   ) ) )
+       , Exp_ident "fact" ))
 ;;
 
 let () =
@@ -110,7 +137,7 @@ let () =
              , Exp_literal (Float 5.)
              , Exp_binop (AddFloat, Exp_ident "a", Exp_ident "b") ) ))
   in
-  match ex7 with
+  match ex8 with
   | Result.Ok res -> print_sig res
   | _ -> Caml.Format.printf "Failed inference"
 ;;

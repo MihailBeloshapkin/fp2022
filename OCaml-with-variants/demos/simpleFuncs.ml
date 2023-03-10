@@ -13,6 +13,6 @@ let () =
      | Declaration _ -> failwith "err"
      | Application exps ->
        let result = Inter.Interpreter.eval [] exps in
-       Repl.output result)
+       Utils.output result)
   | Error _ -> Format.printf "Some error"
 ;;

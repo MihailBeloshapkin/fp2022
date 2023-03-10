@@ -4,30 +4,32 @@
 
 open Ocaml_with_var
 
-(*let splitter = Str.split (Str.regexp ";;")
-*)
 let () =
   let open Ocaml_with_var.Parser in
-  (* let s = Stdio.In_channel.input_all Caml.stdin in *)
-  let s0 = "let rec fact x = if x < 2 then 1 else x * (fact (x - 1));;" in
+  let ctx =
+    Utils.read_several_declarations
+      {|
+    let rec fix f x = f (fix f) x;;
+    let rec fact x = if x < 2 then 1 else x * (fact (x - 1));;
+    let fixfact self n = if n = 0 then 1 else n * self (n - 1);;
+    let f n = fix fixfact n;;
+    let incr x = x + 1;;
+    let add x y = x + y;;
+  |}
+  in
+  let env = Repl.infer_declaration_list ctx in
+  let ctx = Utils.to_ctx ctx in
   let s = Stdio.In_channel.input_all Caml.stdin in
-  match parse_exp s0 with
-  | Result.Ok result ->
-    (match result with
-     | Declaration (_, name, decl_expr) ->
-       (match parse_exp s with
-        | Result.Ok (Application exps) ->
-          let t = Repl.try_infer decl_expr in
-          let result =
-            Inter.Interpreter.eval [ name, Repl.get_exp_type decl_expr ] exps
-          in
-          Repl.output result;
-          Caml.Format.printf "\nType: ";
-          Repl.print_result_of_inference t;
-        | Result.Ok (Declaration (_, _, _)) -> Format.printf "Unexpected declaration"
-        | Error msg -> Format.printf "Some error  : %s" msg)
-     | Application exps ->
-       let result = Inter.Interpreter.eval [] exps in
-       Repl.output result)
+  match parse_exp s with
+  | Result.Ok exp_ast ->
+    (match exp_ast with
+     | Declaration _ -> Format.printf "Application expected"
+     | Application exp as appl ->
+       let open Caml.Format in
+       let typed = Infer.infer_top_level_expressions env appl in
+       let result = Inter.Interpreter.eval ctx exp in
+       printf "Value: ";
+       Utils.output result;
+       Utils.print_result_of_inference typed)
   | Error msg -> Format.printf "Some error: %s" msg
 ;;
