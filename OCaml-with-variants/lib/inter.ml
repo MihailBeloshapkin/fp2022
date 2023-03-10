@@ -23,10 +23,12 @@ module Interpreter = struct
       | Float of float
       | String of string
       | Bool of bool
-      | Func of exps
+      | Func of ((string * t) list) * exps
       | Undefined
+    and context = (string * t) list
   end
 
+  
   let get_val_from_ctx ctx name =
     List.find_exn ~f:(fun (n, _) -> String.equal n name) ctx |> snd
   ;;
@@ -58,6 +60,11 @@ module Interpreter = struct
     | _ -> fail "Unrecognised operation"
   ;;
 
+  let rec pop_func_arguments n = function
+    | Exp_fun (_, exp) when n > 0 -> pop_func_arguments (n - 1) exp
+    | _ as exp -> exp 
+  ;;
+
   let rec eval ctx = function
     | Exp_literal (Int i) -> return (ContextData.Int i)
     | Exp_literal (Float f) -> return (ContextData.Float f)
@@ -76,7 +83,7 @@ module Interpreter = struct
       let func = get_val_from_ctx ctx id in
       let* result =
         match func with
-        | ContextData.Func e ->
+        | ContextData.Func (fun_ctx, e) ->
           let arg_names, body = get_fun_args_and_body e in
           let arg_values =
             args
@@ -85,11 +92,18 @@ module Interpreter = struct
                  | Ok data -> data
                  | _ -> failwith "cant eval")
           in
-          let updated_ctx = List.zip_exn arg_names arg_values in
-          return @@ eval (List.concat [ updated_ctx; ctx ]) body
+          (match (List.length arg_names, List.length arg_values) with
+          | l1, l2 when l1 = l2 ->
+            let new_ctx = List.zip_exn arg_names arg_values in 
+            eval (List.concat [ new_ctx; ctx; fun_ctx ]) body
+          | _, l2 -> 
+            let new_func = pop_func_arguments l2 e in
+            let new_ctx = List.zip_exn (List.take arg_names l2) arg_values in
+            let updated_ctx = List.concat [ new_ctx; ctx; fun_ctx ] in
+            return (ContextData.Func (updated_ctx, new_func)))
         | _ -> fail "Error: function expected"
       in
-      result
+      return result
     (*| Exp_ident i -> *)
     | Exp_ifthenelse (cond, f_branch, s_branch) ->
       let* cond_eval = eval ctx cond in
@@ -142,8 +156,8 @@ let%test _ = p = Ok (Interpreter.ContextData.Int 7)
 let p =
   Interpreter.eval
     [ ( "f"
-      , Interpreter.ContextData.Func
-          (Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1)))) )
+      , Interpreter.ContextData.Func ([],
+          (Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1))))) )
     ]
     (Exp_apply ("f", [ Exp_literal (Int 30) ]))
 ;;
@@ -153,14 +167,14 @@ let%test _ = p = Ok (Interpreter.ContextData.Int 31)
 let p =
   Interpreter.eval
     [ ( "f"
-      , Interpreter.ContextData.Func
+      , Interpreter.ContextData.Func ([], 
           (Exp_fun
              ( "x"
              , Exp_letbinding
                  ( NonRec
                  , "v"
                  , Exp_literal (Int 1)
-                 , Exp_binop (AddInt, Exp_ident "x", Exp_ident "v") ) )) )
+                 , Exp_binop (AddInt, Exp_ident "x", Exp_ident "v") ) ))) )
     ]
     (Exp_apply ("f", [ Exp_literal (Int 30) ]))
 ;;
@@ -171,7 +185,7 @@ let p =
   (* f x =  let v = 1 in let r = 4 in x * v + r*)
   Interpreter.eval
     [ ( "f"
-      , Interpreter.ContextData.Func
+      , Interpreter.ContextData.Func ([],
           (Exp_fun
              ( "x"
              , Exp_letbinding
@@ -185,7 +199,7 @@ let p =
                      , Exp_binop
                          ( AddInt
                          , Exp_binop (MulInt, Exp_ident "x", Exp_ident "v")
-                         , Exp_ident "r" ) ) ) )) )
+                         , Exp_ident "r" ) ) ) )) ))
     ]
     (Exp_apply ("f", [ Exp_literal (Int 30) ]))
 ;;
@@ -195,8 +209,8 @@ let%test _ = p = Ok (Interpreter.ContextData.Int 34)
 let p =
   Interpreter.eval
     [ ( "incr"
-      , Interpreter.ContextData.Func
-          (Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1)))) )
+      , Interpreter.ContextData.Func ([], 
+          (Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1))))) )
     ]
     (Exp_binop (AddInt, Exp_literal (Int 7), Exp_apply ("incr", [ Exp_literal (Int 30) ])))
 ;;
@@ -206,13 +220,13 @@ let%test _ = p = Ok (Interpreter.ContextData.Int 38)
 let p =
   Interpreter.eval
     [ ( "func"
-      , Interpreter.ContextData.Func
+      , Interpreter.ContextData.Func ([], 
           (Exp_fun
              ( "x"
              , Exp_ifthenelse
                  ( Exp_binop (EqInt, Exp_ident "x", Exp_literal (Int 1))
                  , Exp_literal (Int 30)
-                 , Exp_ident "x" ) )) )
+                 , Exp_ident "x" ) )) ))
     ]
     (Exp_apply ("func", [ Exp_literal (Int 1) ]))
 ;;
@@ -222,7 +236,7 @@ let%test _ = p = Ok (Interpreter.ContextData.Int 30)
 let p =
   Interpreter.eval
     [ ( "fact"
-      , Interpreter.ContextData.Func
+      , Interpreter.ContextData.Func ([],
           (Exp_fun
              ( "n"
              , Exp_ifthenelse
@@ -234,7 +248,7 @@ let p =
                      , Exp_apply
                          ( "fact"
                          , [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ] ) )
-                 ) )) )
+                 ) )) ))
     ]
     (Exp_apply ("fact", [ Exp_literal (Int 5) ]))
 ;;

@@ -19,7 +19,7 @@ let print_result_of_inference = function
 ;;
 
 let get_exp_type = function
-  | Exp_fun _ as f -> Func f
+  | Exp_fun _ as f -> Func ([], f)
   | Exp_literal (Int i) -> Int i
   | Exp_literal (Float f) -> Float f
   | _ -> Undefined

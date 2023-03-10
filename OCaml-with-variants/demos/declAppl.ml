@@ -11,10 +11,11 @@ let () =
       {|
     let rec fix f x = f (fix f) x;;
     let rec fact x = if x < 2 then 1 else x * (fact (x - 1));;
-    let fixfact self n = if n = 0 then 1 else n * self (n - 1);;
-    let f n = fix fixfact n;;
+    let selffact self n = if n = 0 then 1 else n * self (n - 1);;
+    let fixfact n = fix selffact n;;
     let incr x = x + 1;;
     let add x y = x + y;;
+    let fcf f x y = f x y;;
   |}
   in
   let env = Repl.infer_declaration_list ctx in
