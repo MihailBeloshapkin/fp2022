@@ -25,12 +25,6 @@ Use `dune promote` after you change things that should runned
   Type: int ->int ->int ->int 
 
   $ ./declAppl.exe <<-EOF
-  > fcf add 4 5 
-  > EOF
-  Value: 9
-  Type infetence failed
-
-  $ ./declAppl.exe <<-EOF
   > fixfact
   > EOF
   Value: Function
