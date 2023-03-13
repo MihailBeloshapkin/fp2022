@@ -10,14 +10,42 @@ let () =
     Utils.read_several_declarations
       {|
     let rec fix f x = f (fix f) x;;
+    
     let rec fact x = if x < 2 then 1 else x * (fact (x - 1));;
+    
     let selffact self n = if n = 0 then 1 else n * self (n - 1);;
+    
     let fixfact n = fix selffact n;;
+    
     let incr x = x + 1;;
+    
     let add x y = x + y;;
+    
     let fcf f x y = f x y;;
+    
+    let fdf f = f;;
+
+    let firstmatcher x y f =
+      match x with
+      | 0 -> 1.0
+      | 1 -> 2.0
+      | 2 -> y
+      | 3 -> f y
+    ;;
+
+    let matcher x = 
+      let t = 
+        match x with 
+        | 0 -> 1 
+        | 2 -> 0 
+        | 5 -> fact 5 
+        | v -> (incr v) * 30
+      in 
+      let v = 30 in
+      v + t
+    ;;
   |}
-  in
+  in  
   let env = Repl.infer_declaration_list ctx in
   let ctx = Utils.to_ctx ctx in
   let s = Stdio.In_channel.input_all Caml.stdin in

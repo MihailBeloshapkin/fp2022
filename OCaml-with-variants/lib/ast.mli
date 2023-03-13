@@ -14,7 +14,7 @@ type literal =
   | String of string
   | Bool of bool
 
-type arg =
+type variant_value =
   | Id of ident
   | Lit of literal
 
@@ -40,12 +40,12 @@ type exps =
   | Exp_ident of ident
   | Exp_literal of literal
   | Exp_seq of exps * exps
-  | Exp_apply of ident * exps list
+  | Exp_apply of exps * exps list
   | Exp_binop of binop * exps * exps
   | Exp_ifthenelse of exps * exps * exps
   | Exp_match of exps * case list
+  | Exp_polyvar of ident * exps list
   | Exp_unit
-
 and case = exps * exps
 
 type declaration = exp_type * string * exps

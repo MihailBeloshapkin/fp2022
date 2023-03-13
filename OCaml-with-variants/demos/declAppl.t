@@ -71,3 +71,57 @@ Use `dune promote` after you change things that should runned
   > EOF
   Value: 153
   Type: int 
+
+  $ ./declAppl.exe <<-EOF
+  > (fun x -> x + 1) 5 
+  > EOF
+  Value: 6
+  Type: int 
+
+  $ ./declAppl.exe <<-EOF
+  > matcher 30 
+  > EOF
+  Value: 960
+  Type infetence failed
+
+  $ ./declAppl.exe <<-EOF
+  > firstmatcher 0 5.0 (fun x -> x + 5.0)
+  > EOF
+  Value: 1.000000
+  Type infetence failed
+
+  $ ./declAppl.exe <<-EOF
+  > firstmatcher 
+  > EOF
+  Value: Function
+  Type: int ->float ->float ->float ->float 
+
+  $ ./declAppl.exe <<-EOF
+  > (fun a b -> a + b) 
+  > EOF
+  Value: Function
+  Type: int ->int ->int 
+
+  $ ./declAppl.exe <<-EOF
+  > (fun a b -> a + b) 1 
+  > EOF
+  Value: Function
+  Type: int ->int 
+
+  $ ./declAppl.exe <<-EOF
+  > (fun a b -> a + b) 1 2 
+  > EOF
+  Value: 3
+  Type: int 
+
+  $ ./declAppl.exe <<-EOF
+  > fdf (fun x -> x) 
+  > EOF
+  Value: Function
+  Type infetence failed
+
+  $ ./declAppl.exe <<-EOF
+  > fcf (fun a b -> a + b) 3 4 
+  > EOF
+  Value: 7
+  Type infetence failed

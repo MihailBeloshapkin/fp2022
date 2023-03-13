@@ -17,3 +17,9 @@ answer is correct
   > 2 = 3
   > EOF
   false
+
+  $ ./simpleFuncs.exe <<-EOF
+  > 3 = 3
+  > EOF
+  true
+

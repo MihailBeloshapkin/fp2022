@@ -42,7 +42,7 @@ end
 module OCamlParser = struct
   open Base
 
-  let keywords_list = [ "let"; "in"; "rec"; "if"; "then"; "else"; "match"; "with" ]
+  let keywords_list = [ "let"; "in"; "rec"; "if"; "fun"; "then"; "else"; "match"; "with" ]
   let is_keyword id = List.exists ~f:(fun s -> String.equal s id) keywords_list
   let token_separator = take_while is_whitespace
 
@@ -185,16 +185,28 @@ module OCamlParser = struct
         (d.e d)
       <?> "letb"
     in
+    let lambda_parser d =
+      fix
+      @@ fun _ ->
+      let body =
+        lift2
+          fun_constructor
+          (token "fun" *> many (space1 *> new_ident) <* space <* token "->")
+          (d.e d)
+      in
+      token "(" *> body <* token ")" <?> "lambda"
+    in
     let app_parser d =
-      let app_arg_p = space1 *> (ident_parser <|> literal_parser) in
+      let app_arg_p = space1 *> (lambda_parser d <|> ident_parser <|> literal_parser) in
       fix
       @@ fun _ ->
       choice
         [ char '(' *> d.e d <* space <* char ')'
-        ; (new_ident
-          >>= fun n ->
+        ; (ident_parser
+          <|> lambda_parser d
+          >>= fun f ->
           many1 (app_arg_p <|> (space1 *> char '(' *> d.e d <* space <* char ')'))
-          >>= fun args -> return @@ Exp_apply (n, args))
+          >>= fun args -> return @@ Exp_apply (f, args))
         ]
       <* space
       <?> "app_parser"
@@ -221,11 +233,27 @@ module OCamlParser = struct
         (d.e d)
         (token "else" *> d.e d)
     in
+    let match_parser d =
+      fix
+      @@ fun _ ->
+      let case_parser =
+        space *> token "|" *> space *> d.e d
+        <* space
+        <* token "->"
+        >>= fun param -> d.e d >>= fun right -> return @@ (param, right)
+      in
+      lift2
+        (fun e cases -> Exp_match (e, cases))
+        (token "match" *> d.e d <* token "with" <* space)
+        (many1 case_parser)
+    in
     let e d =
       letbinding_parser d
       <|> ifthelse_parser d
+      <|> match_parser d
       <|> binop_parser d
       <|> app_parser d
+      <|> lambda_parser d
       <|> literal_parser
       <|> ident_parser
       <* space
@@ -291,8 +319,9 @@ module Printer = struct
       print_ast e1;
       print_ast e2;
       printf ")"
-    | Exp_apply (name, arg_list) ->
-      printf "(Apply: name=%s Args:" name;
+    | Exp_apply (f, arg_list) ->
+      printf "(Apply:";
+      print_ast f;
       List.iter ~f:print_ast arg_list;
       printf ")"
     | Exp_binop (b, l, r) ->
@@ -307,6 +336,14 @@ module Printer = struct
       print_ast b1;
       printf ",";
       print_ast b2;
+      printf ")"
+    | Exp_match (e, cases) ->
+      printf "match (";
+      print_ast e;
+      cases
+      |> List.iter ~f:(fun (left, right) ->
+           print_ast left;
+           print_ast right);
       printf ")"
     | _ -> printf "Unrecognised Ast Node"
   ;;
@@ -336,12 +373,8 @@ let p2 = parse_several_declarations "let f x = x + 1;; let f x = x - 1;;"
 
 let%test _ =
   match p2 with
-  | Result.Ok res ->
-    print_int @@ List.length res;
-    true
-  | _ ->
-    printf "FAIL";
-    false
+  | Result.Ok _ -> true
+  | _ -> false
 ;;
 
 let p2 = parse_exp "if a then b + k else c"
@@ -362,6 +395,39 @@ let%test _ = p2 = Result.Ok (Application (Exp_ident "fact"))
 
 let p2 = parse_exp "a = 1"
 let p2 = parse_exp "let rec fact n = if n < 2 then 1 else n * (fact (n - 1));;"
+let p2 = parse_exp "4 + 2"
+
+let%test _ =
+  p2
+  = Result.Ok (Application (Exp_binop (AddInt, Exp_literal (Int 4), Exp_literal (Int 2))))
+;;
+
+let p2 = parse_exp "abc - asdf "
+
+let%test _ =
+  p2 = Result.Ok (Application (Exp_binop (SubInt, Exp_ident "abc", Exp_ident "asdf")))
+;;
+
+let p2 = parse_exp "(fun x -> x + 1)"
+
+let%test _ =
+  p2
+  = Result.Ok
+      (Application (Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1)))))
+;;
+
+let p2 = parse_exp "(fun x -> x + 1) 5 "
+
+let%test _ =
+  p2
+  = Result.Ok
+      (Application
+         (Exp_apply
+            ( Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1)))
+            , [ Exp_literal (Int 5) ] )))
+;;
+
+let p2 = parse_exp "match x with | a b -> 1"
 
 let%test _ =
   match p2 with
@@ -377,19 +443,6 @@ let%test _ =
     true
 ;;
 
-let p2 = parse_exp "4 + 2"
-
-let%test _ =
-  p2
-  = Result.Ok (Application (Exp_binop (AddInt, Exp_literal (Int 4), Exp_literal (Int 2))))
-;;
-
-let p2 = parse_exp "abc - asdf "
-
-let%test _ =
-  p2 = Result.Ok (Application (Exp_binop (SubInt, Exp_ident "abc", Exp_ident "asdf")))
-;;
-
 let p2 = parse_exp "(f a) + (g b)"
 
 let%test _ =
@@ -398,8 +451,8 @@ let%test _ =
       (Application
          (Exp_binop
             ( AddInt
-            , Exp_apply ("f", [ Exp_ident "a" ])
-            , Exp_apply ("g", [ Exp_ident "b" ]) )))
+            , Exp_apply (Exp_ident "f", [ Exp_ident "a" ])
+            , Exp_apply (Exp_ident "g", [ Exp_ident "b" ]) )))
 ;;
 
 let p2 = parse_exp "a + 2"
@@ -410,7 +463,9 @@ let%test _ =
 
 let p2 = parse_exp "fact 5 "
 
-let%test _ = p2 = Result.Ok (Application (Exp_apply ("fact", [ Exp_literal (Int 5) ])))
+let%test _ =
+  p2 = Result.Ok (Application (Exp_apply (Exp_ident "fact", [ Exp_literal (Int 5) ])))
+;;
 
 let p2 = parse_exp "1.5 +. 2.3  \n\n"
 
@@ -434,8 +489,26 @@ let%test _ =
   = Result.Ok (Application (Exp_binop (GeqInt, Exp_ident "a", Exp_literal (Float 1.0))))
 ;;
 
+let p2 = parse_exp "let func x = match x with | 0 -> 1 | 1 -> 3;;"
+
+let%test _ =
+  p2
+  = Result.Ok
+      (Declaration
+         ( NonRec
+         , "func"
+         , Exp_fun
+             ( "x"
+             , Exp_match
+                 ( Exp_ident "x"
+                 , [ Exp_literal (Int 0), Exp_literal (Int 1)
+                   ; Exp_literal (Int 1), Exp_literal (Int 3)
+                   ] ) ) ))
+;;
+
 let p2 = parse_exp "let incr x = x + 1;;"
 
+(*
 let%test _ =
   match p2 with
   | Result.Error m ->
@@ -449,6 +522,7 @@ let%test _ =
     Printer.print_ast r;
     true
 ;;
+*)
 
 let p2 = parse_exp "let rec fix f x = f (fix f) x;;"
 
@@ -462,8 +536,10 @@ let%test _ =
              ( "f"
              , Exp_fun
                  ( "x"
-                 , Exp_apply ("f", [ Exp_apply ("fix", [ Exp_ident "f" ]); Exp_ident "x" ])
-                 ) ) ))
+                 , Exp_apply
+                     ( Exp_ident "f"
+                     , [ Exp_apply (Exp_ident "fix", [ Exp_ident "f" ]); Exp_ident "x" ]
+                     ) ) ) ))
 ;;
 
 let p2 = parse_exp "a = incr 30"
@@ -472,7 +548,8 @@ let%test _ =
   p2
   = Result.Ok
       (Application
-         (Exp_binop (EqInt, Exp_ident "a", Exp_apply ("incr", [ Exp_literal (Int 30) ]))))
+         (Exp_binop
+            (EqInt, Exp_ident "a", Exp_apply (Exp_ident "incr", [ Exp_literal (Int 30) ]))))
 ;;
 
 let p2 = parse_exp "let f x = if x = 1 then 30 else x ;;"
@@ -492,6 +569,25 @@ let%test _ =
 ;;
 
 let p2 = parse_exp "let f x = let a = 10 in a;;"
+
+let p2 = 
+  parse_exp
+    {|
+    let matcher x = 
+      let t = 
+        match x with 
+        | 0 -> 1 
+        | 2 -> 0 
+        | 5 -> fact 5 
+        | v -> (incr v) * 30
+      in 
+      t
+    ;; 
+    |}
+
+let%test _ =
+    match p2 with | Result.Ok _ -> true | _ -> false
+  
 
 let%test _ =
   match p2 with

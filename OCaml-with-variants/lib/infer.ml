@@ -399,10 +399,27 @@ let init_infer =
         Subst.compose_all [ cond_sub; fst_branch_sub; snd_branch_sub; sub; sub' ]
       in
       return (final_sub, Subst.apply final_sub fst_branch_t)
+    | Exp_match (e, (left, right) :: cases) ->
+      let* e_sub, e_type = helper env e in
+      let* left_sub, left_t = helper env left in
+      let* right_sub, right_t = helper env right in
+      let* sub = unify e_type left_t in
+      let* final_sub = Subst.compose_all [ e_sub; left_sub; right_sub; sub ] in
+      let* final_sub = infer_match e_type right_t final_sub env cases in 
+      return (final_sub, Subst.apply final_sub right_t)
     | _ -> fail Unification_failed
-  and infer_app name env = function
+    and infer_match e_type return_type prev_subst env = function
+      | (left, right) :: tail ->
+        let* left_sub, left_t = helper env left in
+        let* right_sub, right_t = helper env right in
+        let* sub = unify e_type left_t in
+        let* sub' = unify return_type right_t in
+        let* final_sub = Subst.compose_all [ prev_subst; left_sub; right_sub; sub; sub' ] in
+        infer_match e_type return_type final_sub env tail
+      | _ -> return prev_subst
+  and infer_app f env = function
     | [ a ] ->
-      let* fun_sub, fun_t = lookup_env name env in
+      let* fun_sub, fun_t = helper env f in
       let* a_sub, a_t = helper (TypeEnv.apply fun_sub env) a in
       let* var_t = fresh_var in
       let* unified_sub = unify (Arrow (a_t, var_t)) (Subst.apply a_sub fun_t) in
@@ -410,7 +427,7 @@ let init_infer =
       let* final = Subst.compose_all [ fun_sub; a_sub; unified_sub ] in
       return (final, res_typ)
     | h :: t ->
-      let* fun_sub, fun_t = infer_app name env t in
+      let* fun_sub, fun_t = infer_app f env t in
       let* a_sub, a_t = helper (TypeEnv.apply fun_sub env) h in
       let* var_t = fresh_var in
       let* unified_sub = unify (Arrow (a_t, var_t)) (Subst.apply a_sub fun_t) in
