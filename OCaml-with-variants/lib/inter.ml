@@ -24,6 +24,7 @@ module Interpreter = struct
       | String of string
       | Bool of bool
       | Func of (string * t) list * exps
+      | Polyvar of string * exps list
       | Undefined
 
     and context = (string * t) list
@@ -60,17 +61,6 @@ module Interpreter = struct
     | _ -> fail "Unrecognised operation"
   ;;
 
-  let compare_values first second =
-    let open ContextData in
-    let open Caml in
-    match first, second with
-    | Int a, Int b -> a = b
-    | Float a, Float b -> a = b
-    | String s1, String s2 -> String.equal s1 s2
-    | Bool b1, Bool b2 -> b1 = b2
-    | _ -> false
-  ;;
-
   let rec pop_func_arguments n = function
     | Exp_fun (_, exp) when n > 0 -> pop_func_arguments (n - 1) exp
     | _ as exp -> exp
@@ -80,6 +70,8 @@ module Interpreter = struct
     | Exp_literal (Int i) -> return (ContextData.Int i)
     | Exp_literal (Float f) -> return (ContextData.Float f)
     | Exp_literal (String s) -> return (ContextData.String s)
+    | Exp_polyvar (name, exp_list) ->
+      return (ContextData.Polyvar (name, exp_list))
     | Exp_fun _ as f -> return (ContextData.Func ([], f))
     | Exp_binop (binop, left, right) ->
       let* l_evaluated = eval ctx left in
@@ -126,8 +118,8 @@ module Interpreter = struct
       in
       result
     | Exp_match (e, cases) ->
-      let* result = eval ctx e in
-      eval_match result ctx cases
+      let* exp_value = eval ctx e in
+      eval_match exp_value ctx cases
     | _ -> fail "not impl"
   and eval_let ctx (id, ex) =
     let* computed_val = eval ctx ex in
@@ -139,10 +131,37 @@ module Interpreter = struct
       eval ctx right  
     | (left, right) :: tail ->
       let* computed_left = eval ctx left in
-      if compare_values computed_left value
-      then eval ctx right
+      let* is_equal, new_ctx = compare_values ctx value computed_left in 
+      if is_equal
+      then eval new_ctx right
       else eval_match value ctx tail
     | _ -> fail "sorry, no variants"
+  and compare_values ctx first second =
+    let open ContextData in
+    let open Caml in
+    match first, second with
+    | Int a, Int b -> return ((a = b), ctx)
+    | Float a, Float b -> return ((a = b), ctx)
+    | String s1, String s2 -> return ((String.equal s1 s2), ctx)
+    | Bool b1, Bool b2 -> return ((b1 = b2), ctx)
+    | Polyvar (name0, exp_list0), Polyvar (name1, exp_list1) -> 
+      if String.equal name0 name1 then
+        compare_polyvars ctx exp_list0 exp_list1
+      else return (false, ctx)
+    | _ -> return (false, ctx)
+  and compare_polyvars ctx l1 l2 =
+    match l1, l2 with
+    | head :: t1, (Exp_ident name) :: t2 -> 
+      let* head_value = eval ctx head in
+      let ctx = (name, head_value) :: ctx in
+      compare_polyvars ctx t1 t2
+    | h1 :: t1, h2 :: t2 ->
+      let* value_h1 = eval [] h1 in
+      let* value_h2 = eval [] h2 in
+      let* (is_equal, new_ctx) = compare_values ctx value_h1 value_h2 in
+      if is_equal then compare_polyvars new_ctx t1 t2 else return (false, ctx)
+    | [], [] -> return (true, ctx)
+    | _ -> return (false, ctx)
   ;;
 end
 

@@ -31,6 +31,7 @@ let output = function
   | Ok (Interpreter.ContextData.String s) -> Caml.Format.printf "%s" s
   | Ok (Interpreter.ContextData.Bool b) -> Caml.Format.printf "%b" b
   | Ok (Interpreter.ContextData.Func _) -> Caml.Format.printf "Function"
+  | Ok (Interpreter.ContextData.Polyvar (name, _)) -> Caml.Format.printf "%s" name
   | _ -> Caml.Format.printf "FAILED"
 ;;
 

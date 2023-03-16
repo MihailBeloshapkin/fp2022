@@ -125,3 +125,28 @@ Use `dune promote` after you change things that should runned
   > EOF
   Value: 7
   Type infetence failed
+
+
+  $ ./declAppl.exe <<-EOF
+  > 1 
+  > EOF
+  Value: 1
+  Type: int 
+
+  $ ./declAppl.exe <<-EOF
+  > anothermatcher @c(0) 
+  > EOF
+  Value: 3
+  Type infetence failed
+
+  $ ./declAppl.exe <<-EOF
+  > anothermatcher @d (@e(31)) 
+  > EOF
+  Value: 31
+  Type infetence failed
+
+  $ ./declAppl.exe <<-EOF
+  > listHead @cons(1, @cons(2, @cons(3, nil))) 
+  > EOF
+  Value: some
+  Type infetence failed

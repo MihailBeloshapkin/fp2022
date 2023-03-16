@@ -44,6 +44,20 @@ let () =
       let v = 30 in
       v + t
     ;;
+
+    let anothermatcher x =
+      match x with
+      | @a -> 1
+      | @b -> 2
+      | @c (0) -> 3 
+      | @d (@e(v)) -> v
+    ;;
+
+    let listHead list =
+      match list with
+      | @cons(head, tail) -> @some(head)
+      | @nil -> @none
+    ;;
   |}
   in  
   let env = Repl.infer_declaration_list ctx in
