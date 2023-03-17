@@ -12,7 +12,7 @@ let () =
     (match result with
      | Declaration _ -> failwith "err"
      | Application exps ->
-       let result = Inter.Interpreter.eval [] exps in
+       let result = Inter.Interpreter.eval Inter.IdMap.empty exps in
        Utils.output result)
   | Error _ -> Format.printf "Some error"
 ;;

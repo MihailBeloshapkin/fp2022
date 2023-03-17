@@ -15,25 +15,37 @@ let print_result_of_inference = function
   | Result.Ok res ->
     Caml.Format.printf "\nType: ";
     print_t res
-  | _ -> Caml.Format.printf "\nType infetence failed"
+  | Result.Error e -> pp_error e;
 ;;
 
 let get_exp_type = function
-  | Exp_fun _ as f -> Func ([], f)
+  | Exp_fun _ as f -> Func (IdMap.empty, f)
   | Exp_literal (Int i) -> Int i
   | Exp_literal (Float f) -> Float f
   | _ -> Undefined
 ;;
 
-let output = function
-  | Ok (Interpreter.ContextData.Int i) -> Caml.Format.printf "%i" i
-  | Ok (Interpreter.ContextData.Float f) -> Caml.Format.printf "%f" f
-  | Ok (Interpreter.ContextData.String s) -> Caml.Format.printf "%s" s
-  | Ok (Interpreter.ContextData.Bool b) -> Caml.Format.printf "%b" b
-  | Ok (Interpreter.ContextData.Func _) -> Caml.Format.printf "Function"
-  | Ok (Interpreter.ContextData.Polyvar (name, _)) -> Caml.Format.printf "%s" name
+let rec output = function
+  | Ok value -> print_value value
+  | Error msg -> Caml.Format.printf "impossible to print: %s " msg
+and print_value = function
+  | (Interpreter.ContextData.Int i) -> Caml.Format.printf "%i " i
+  | (Interpreter.ContextData.Float f) -> Caml.Format.printf "%f " f
+  | (Interpreter.ContextData.String s) -> Caml.Format.printf "%s " s
+  | (Interpreter.ContextData.Bool b) -> Caml.Format.printf "%b " b
+  | (Interpreter.ContextData.Func _) -> Caml.Format.printf "Function"
+  | (Interpreter.ContextData.Polyvar (name, data)) -> 
+    Caml.Format.printf "%s (" name;
+    print_polyvar data;
+    Caml.Format.printf ")"
   | _ -> Caml.Format.printf "FAILED"
+and print_polyvar = function
+  | head :: t -> 
+    print_value head;
+    print_polyvar t
+  | _ -> ()
 ;;
+
 
 let read_next prev =
   let input = read_line () in
@@ -82,11 +94,15 @@ let read_several_declarations code =
     []
 ;;
 
-let to_ctx =
-  List.fold
-    ~f:
-      (fun acc -> function
-        | Declaration (_, name, expr) -> (name, get_exp_type expr) :: acc
-        | _ -> acc)
-    ~init:[]
+let to_ctx top_level_list =
+  let new_ctx_list =
+    List.fold
+      ~f:
+        (fun acc -> function
+          | Declaration (_, name, expr) -> (name, get_exp_type expr) :: acc
+          | _ -> acc)
+      ~init:[]
+      top_level_list
+  in
+  Interpreter.add_list_to_env IdMap.empty new_ctx_list
 ;;

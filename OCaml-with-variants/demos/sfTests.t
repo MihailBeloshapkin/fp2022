@@ -11,15 +11,15 @@ answer is correct
   $ ./simpleFuncs.exe <<-EOF
   > 2 + 3
   > EOF
-  5
+  5 
 
   $ ./simpleFuncs.exe <<-EOF
   > 2 = 3
   > EOF
-  false
+  false 
 
   $ ./simpleFuncs.exe <<-EOF
   > 3 = 3
   > EOF
-  true
+  true 
 

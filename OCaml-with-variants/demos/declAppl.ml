@@ -53,13 +53,31 @@ let () =
       | @d (@e(v)) -> v
     ;;
 
+    let poly x =
+      match x with
+      | @a -> 1
+      | @b -> 0
+    ;;
+
     let listHead list =
       match list with
-      | @cons(head, tail) -> @some(head)
+      | @cons(head, tail) -> @some(1)
       | @nil -> @none
     ;;
+
+    let listTail list =
+      match list with
+      | @cons(head, tail) -> @some(tail)
+      | @nil -> @none
+    ;;
+
+    let optionId x =
+      match x with
+      | @some(v) -> @some(v)
+      | @none -> @none
+    ;;
   |}
-  in  
+  in
   let env = Repl.infer_declaration_list ctx in
   let ctx = Utils.to_ctx ctx in
   let s = Stdio.In_channel.input_all Caml.stdin in

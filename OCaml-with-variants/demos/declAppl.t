@@ -6,17 +6,12 @@ https://dune.readthedocs.io/en/stable/tests.html#cram-tests
 Use `dune promote` after you change things that should runned
 
 
+
   $ ./declAppl.exe <<-EOF
   > fact 
   > EOF
   Value: Function
   Type: int ->int 
-
-  $ ./declAppl.exe <<-EOF
-  > fix 
-  > EOF
-  Value: Function
-  Type: 2 ->5 ->2 ->5 ->2 ->5 
 
   $ ./declAppl.exe <<-EOF
   > selffact 
@@ -25,128 +20,135 @@ Use `dune promote` after you change things that should runned
   Type: int ->int ->int ->int 
 
   $ ./declAppl.exe <<-EOF
-  > fixfact
-  > EOF
-  Value: Function
-  Type: int ->int 
-
-  $ ./declAppl.exe <<-EOF
-  > fixfact 5 
-  > EOF
-  Value: 120
-  Type: int 
-
-  $ ./declAppl.exe <<-EOF
   > fact 5
   > EOF
-  Value: 120
+  Value: 120 
   Type: int 
+
+  $ ./declAppl.exe <<-EOF
+  > 2 = 3 
+  > EOF
+  Value: false 
+  Type: bool 
 
   $ ./declAppl.exe <<-EOF
   > (fact 5) + (fact 7)
   > EOF
-  Value: 5160
+  Value: 5160 
   Type: int 
 
   $ ./declAppl.exe <<-EOF
   > (fact (fact 3))
   > EOF
-  Value: 720
+  Value: 720 
   Type: int 
 
   $ ./declAppl.exe <<-EOF
   > (fact 5) * (incr 30)
   > EOF
-  Value: 3720
+  Value: 3720 
   Type: int 
 
   $ ./declAppl.exe <<-EOF
   > (fact 5) = 120
   > EOF
-  Value: true
+  Value: true 
   Type: bool 
 
   $ ./declAppl.exe <<-EOF
   > add (fact 5) (incr 2 + 30)
   > EOF
-  Value: 153
+  Value: 153 
   Type: int 
 
   $ ./declAppl.exe <<-EOF
   > (fun x -> x + 1) 5 
   > EOF
-  Value: 6
+  Value: 6 
   Type: int 
 
   $ ./declAppl.exe <<-EOF
   > matcher 30 
   > EOF
-  Value: 960
-  Type infetence failed
-
-  $ ./declAppl.exe <<-EOF
-  > firstmatcher 0 5.0 (fun x -> x + 5.0)
-  > EOF
-  Value: 1.000000
-  Type infetence failed
+  Value: 960 
 
   $ ./declAppl.exe <<-EOF
   > firstmatcher 
   > EOF
   Value: Function
   Type: int ->float ->float ->float ->float 
-
+ 
   $ ./declAppl.exe <<-EOF
   > (fun a b -> a + b) 
   > EOF
   Value: Function
   Type: int ->int ->int 
-
+ 
   $ ./declAppl.exe <<-EOF
   > (fun a b -> a + b) 1 
   > EOF
   Value: Function
   Type: int ->int 
-
+ 
   $ ./declAppl.exe <<-EOF
   > (fun a b -> a + b) 1 2 
   > EOF
-  Value: 3
+  Value: 3 
   Type: int 
-
+ 
   $ ./declAppl.exe <<-EOF
   > fdf (fun x -> x) 
   > EOF
   Value: Function
-  Type infetence failed
+
+  $ ./declAppl.exe <<-EOF
+  > firstmatcher 0 5.0 (fun x -> x + 5.0)
+  > EOF
+  Value: 1.000000 
 
   $ ./declAppl.exe <<-EOF
   > fcf (fun a b -> a + b) 3 4 
   > EOF
-  Value: 7
-  Type infetence failed
-
+  Value: 7 
 
   $ ./declAppl.exe <<-EOF
   > 1 
   > EOF
-  Value: 1
+  Value: 1 
   Type: int 
 
   $ ./declAppl.exe <<-EOF
   > anothermatcher @c(0) 
   > EOF
-  Value: 3
-  Type infetence failed
+  Value: 3 
 
   $ ./declAppl.exe <<-EOF
   > anothermatcher @d (@e(31)) 
   > EOF
-  Value: 31
-  Type infetence failed
+  Value: 31 
 
   $ ./declAppl.exe <<-EOF
-  > listHead @cons(1, @cons(2, @cons(3, nil))) 
+  > @d (1, 2, 4) 
   > EOF
-  Value: some
-  Type infetence failed
+  Value: d (1 2 4 )
+  Not implemented: polyvar
+
+  $ ./declAppl.exe <<-EOF
+  > poly @a 
+  > EOF
+  Value: 1 
+
+  $ ./declAppl.exe <<-EOF
+  > listHead @cons(1, @cons(2, @cons(3, @nil))) 
+  > EOF
+  Value: some (1 )
+
+  $ ./declAppl.exe <<-EOF
+  > listTail @cons(1, @cons(2, @cons(3, @nil))) 
+  > EOF
+  Value: some (cons (2 cons (3 nil ())))
+
+  $ ./declAppl.exe <<-EOF
+  > optionId @some(1) 
+  > EOF
+  Value: some (1 )

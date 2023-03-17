@@ -18,6 +18,7 @@ module TypedTree = struct
     | VUndefined
 
   type enviroment = value IdMap.t
+
   type type_num = int
 
   type base_type =
@@ -48,12 +49,14 @@ let log fmt =
 type error =
   | Occurs_check
   | No_variable of string
+  | Not_implemented of string
   | Unification_failed
 
-let pp_error ppf : error -> _ = function
-  | Occurs_check -> Format.fprintf ppf "Occurs check failed"
-  | No_variable s -> Format.fprintf ppf "Undefined variable '%s'" s
-  | Unification_failed -> Format.fprintf ppf "unification failed"
+let pp_error = function
+  | Occurs_check -> Format.printf "\nOccurs check failed"
+  | No_variable s -> Format.printf "\nUndefined variable '%s'" s
+  | Not_implemented msg -> Format.printf "\nNot implemented: %s" msg
+  | Unification_failed -> Format.printf ""
 ;;
 
 module R : sig
@@ -405,18 +408,19 @@ let init_infer =
       let* right_sub, right_t = helper env right in
       let* sub = unify e_type left_t in
       let* final_sub = Subst.compose_all [ e_sub; left_sub; right_sub; sub ] in
-      let* final_sub = infer_match e_type right_t final_sub env cases in 
+      let* final_sub = infer_match e_type right_t final_sub env cases in
       return (final_sub, Subst.apply final_sub right_t)
+    | Exp_polyvar _ -> fail (Not_implemented "polyvar")
     | _ -> fail Unification_failed
-    and infer_match e_type return_type prev_subst env = function
-      | (left, right) :: tail ->
-        let* left_sub, left_t = helper env left in
-        let* right_sub, right_t = helper env right in
-        let* sub = unify e_type left_t in
-        let* sub' = unify return_type right_t in
-        let* final_sub = Subst.compose_all [ prev_subst; left_sub; right_sub; sub; sub' ] in
-        infer_match e_type return_type final_sub env tail
-      | _ -> return prev_subst
+  and infer_match e_type return_type prev_subst env = function
+    | (left, right) :: tail ->
+      let* left_sub, left_t = helper env left in
+      let* right_sub, right_t = helper env right in
+      let* sub = unify e_type left_t in
+      let* sub' = unify return_type right_t in
+      let* final_sub = Subst.compose_all [ prev_subst; left_sub; right_sub; sub; sub' ] in
+      infer_match e_type return_type final_sub env tail
+    | _ -> return prev_subst
   and infer_app f env = function
     | [ a ] ->
       let* fun_sub, fun_t = helper env f in

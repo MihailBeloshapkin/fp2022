@@ -46,6 +46,7 @@ type exps =
   | Exp_match of exps * case list
   | Exp_polyvar of ident * exps list
   | Exp_unit
+
 and case = exps * exps
 
 type declaration = exp_type * string * exps

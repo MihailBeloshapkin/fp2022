@@ -197,21 +197,25 @@ module OCamlParser = struct
       token "(" *> body <* token ")" <?> "lambda"
     in
     let polyvar_parser d =
-      fix 
+      fix
       @@ fun _ ->
-        let name = char '@' *> take_while1 is_letter in
-        let constructor = 
-          space *> char '(' *> space *> d.e d >>= fun first ->
-          many (char ',' *> d.e d) <* char ')' >>= fun next -> return @@ first :: next
-        in
-        space *>
-        lift2
-          (fun name expr_list -> Exp_polyvar (name, expr_list))
-          name
-          (option [] constructor)
+      let name = char '@' *> take_while1 is_letter in
+      let constructor =
+        space *> char '(' *> space *> d.e d
+        >>= fun first ->
+        many (char ',' *> d.e d) <* char ')' >>= fun next -> return @@ (first :: next)
+      in
+      space
+      *> lift2
+           (fun name expr_list -> Exp_polyvar (name, expr_list))
+           name
+           (option [] constructor)
     in
     let app_parser d =
-      let app_arg_p = space1 *> (lambda_parser d  <|> polyvar_parser d <|> ident_parser <|> literal_parser) in
+      let app_arg_p =
+        space1
+        *> (lambda_parser d <|> polyvar_parser d <|> ident_parser <|> literal_parser)
+      in
       fix
       @@ fun _ ->
       choice
@@ -363,8 +367,7 @@ module Printer = struct
     | Exp_polyvar (name, exp_list) ->
       printf "Polyvar (";
       printf "Name: %s" name;
-      exp_list
-      |> List.iter ~f:print_ast;
+      exp_list |> List.iter ~f:print_ast;
       printf ")"
     | _ -> printf "Unrecognised Ast Node"
   ;;
@@ -410,14 +413,16 @@ let%test _ =
             , Exp_ident "c" )))
 ;;
 
-let p2 = parse_exp 
-  {|
+let p2 =
+  parse_exp
+    {|
     let func x = 
       match x with 
       | @A (0) -> 0
       | @B (1, 4) -> 1
     ;;
   |}
+;;
 
 let%test _ =
   match p2 with
@@ -433,15 +438,16 @@ let%test _ =
     true
 ;;
 
-
-let p2 = parse_exp 
-  {|
+let p2 =
+  parse_exp
+    {|
     let func x = 
       match x with 
       | @A (0) -> @C
       | @B (1, 4) -> @D
     ;;
   |}
+;;
 
 let%test _ =
   match p2 with
@@ -456,8 +462,6 @@ let%test _ =
     Printer.print_ast r;
     true
 ;;
-
-
 
 let p2 = parse_exp "fact "
 
@@ -498,7 +502,6 @@ let%test _ =
 ;;
 
 let p2 = parse_exp "match x with | a b -> 1"
-
 let p2 = parse_exp "(f a) + (g b)"
 
 let%test _ =
@@ -626,7 +629,7 @@ let%test _ =
 
 let p2 = parse_exp "let f x = let a = 10 in a;;"
 
-let p2 = 
+let p2 =
   parse_exp
     {|
     let matcher x = 
@@ -640,7 +643,10 @@ let p2 =
       t
     ;; 
     |}
+;;
 
 let%test _ =
-    match p2 with | Result.Ok _ -> true | _ -> false
-  
+  match p2 with
+  | Result.Ok _ -> true
+  | _ -> false
+;;
