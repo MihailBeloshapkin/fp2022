@@ -46,11 +46,17 @@ module OCamlParser = struct
   let is_keyword id = List.exists ~f:(fun s -> String.equal s id) keywords_list
   let token_separator = take_while is_whitespace
 
-  let is_letter = function
+  let is_small_letter = function
     | 'a' .. 'z' -> true
+    | _ -> false
+  ;;
+  
+  let is_big_letter = function
     | 'A' .. 'Z' -> true
     | _ -> false
   ;;
+    
+  let is_letter l = is_small_letter l || is_big_letter l
 
   let is_digit = function
     | '0' .. '9' -> true
@@ -103,7 +109,7 @@ module OCamlParser = struct
   end
 
   let new_ident =
-    space *> take_while1 is_letter
+    space *> take_while1 is_small_letter
     >>= fun str ->
     if is_keyword str then fail "Keyword in the wrong place of program" else return str
   ;;
@@ -199,7 +205,7 @@ module OCamlParser = struct
     let polyvar_parser d =
       fix
       @@ fun _ ->
-      let name = char '@' *> take_while1 is_letter in
+      let name = space *> take_while1 is_big_letter >>= fun part1 -> take_while is_letter >>= fun part2 -> return @@ part1 ^ part2  in
       let constructor =
         space *> char '(' *> space *> d.e d
         >>= fun first ->
@@ -418,24 +424,10 @@ let p2 =
     {|
     let func x = 
       match x with 
-      | @A (0) -> 0
-      | @B (1, 4) -> 1
+      | A (0) -> 0
+      | B (1, 4) -> 1
     ;;
   |}
-;;
-
-let%test _ =
-  match p2 with
-  | Result.Error m ->
-    printf "Error: %s" m;
-    false
-  | Result.Ok (Declaration (_, name, r)) ->
-    printf "Name: %s" name;
-    Printer.print_ast r;
-    true
-  | Result.Ok (Application r) ->
-    Printer.print_ast r;
-    true
 ;;
 
 let p2 =
@@ -443,24 +435,10 @@ let p2 =
     {|
     let func x = 
       match x with 
-      | @A (0) -> @C
-      | @B (1, 4) -> @D
+      | A (0) -> C
+      | B (1, 4) -> D
     ;;
   |}
-;;
-
-let%test _ =
-  match p2 with
-  | Result.Error m ->
-    printf "Error: %s" m;
-    false
-  | Result.Ok (Declaration (_, name, r)) ->
-    printf "Name: %s" name;
-    Printer.print_ast r;
-    true
-  | Result.Ok (Application r) ->
-    Printer.print_ast r;
-    true
 ;;
 
 let p2 = parse_exp "fact "

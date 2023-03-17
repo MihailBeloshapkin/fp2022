@@ -45,37 +45,32 @@ let () =
       v + t
     ;;
 
-    let anothermatcher x =
-      match x with
-      | @a -> 1
-      | @b -> 2
-      | @c (0) -> 3 
-      | @d (@e(v)) -> v
-    ;;
-
     let poly x =
       match x with
-      | @a -> 1
-      | @b -> 0
+      | A -> 1
+      | B -> 0
     ;;
 
-    let listHead list =
+    let listhead list =
       match list with
-      | @cons(head, tail) -> @some(1)
-      | @nil -> @none
+      | Cons(head, tail) -> Some(1)
+      | Nil -> None
     ;;
-
-    let listTail list =
+    
+    let listtail list =
       match list with
-      | @cons(head, tail) -> @some(tail)
-      | @nil -> @none
+      | Cons(head, tail) -> Some(tail)
+      | Nil -> None
     ;;
 
-    let optionId x =
+    let anothermatcher x =
       match x with
-      | @some(v) -> @some(v)
-      | @none -> @none
+      | A -> 1
+      | B -> 2
+      | C (0) -> 3 
+      | D ( E(v)) -> v
     ;;
+
   |}
   in
   let env = Repl.infer_declaration_list ctx in
@@ -94,3 +89,111 @@ let () =
        Utils.print_result_of_inference typed)
   | Error msg -> Format.printf "Some error: %s" msg
 ;;
+
+(*
+    let anothermatcher x =
+      match x with
+      | A -> 1
+      | B -> 2
+      | C (0) -> 3 
+      | D (E(v)) -> v
+    ;;
+
+    let poly x =
+      match x with
+      | A -> 1
+      | B -> 0
+    ;;
+
+    let listhead list =
+      match list with
+      | Cons(head, tail) -> Some(1)
+      | Nil -> @none
+    ;;
+
+    let listtail list =
+      match list with
+      | Cons(head, tail) -> Some(tail)
+      | Nil -> None
+    ;;
+
+    let optionid x =
+      match x with
+      | Some(v) -> Some(v)
+      | None -> None
+    ;;
+    
+      $ ./declAppl.exe <<-EOF
+  > anothermatcher C(0) 
+  > EOF
+  Fatal error: exception Not_found
+  Raised at Stdlib__map.Make.find in file "map.ml", line 137, characters 10-25
+  Called from Ocaml_with_var__Inter.Interpreter.get_from_env in file "lib/inter.ml" (inlined), line 81, characters 30-49
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 106, characters 32-51
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 111, characters 18-28
+  Called from Dune__exe__DeclAppl in file "demos/declAppl.ml", line 60, characters 20-50
+  [2]
+
+  $ ./declAppl.exe <<-EOF
+  > anothermatcher D (E(31)) 
+  > EOF
+  Fatal error: exception Not_found
+  Raised at Stdlib__map.Make.find in file "map.ml", line 137, characters 10-25
+  Called from Ocaml_with_var__Inter.Interpreter.get_from_env in file "lib/inter.ml" (inlined), line 81, characters 30-49
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 106, characters 32-51
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 111, characters 18-28
+  Called from Dune__exe__DeclAppl in file "demos/declAppl.ml", line 60, characters 20-50
+  [2]
+
+  $ ./declAppl.exe <<-EOF
+  > D (1, 2, 4) 
+  > EOF
+  Value: D (1 2 4 )
+  Not implemented: polyvar
+
+  $ ./declAppl.exe <<-EOF
+  > poly A
+  > EOF
+  Fatal error: exception Not_found
+  Raised at Stdlib__map.Make.find in file "map.ml", line 137, characters 10-25
+  Called from Ocaml_with_var__Inter.Interpreter.get_from_env in file "lib/inter.ml" (inlined), line 81, characters 30-49
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 106, characters 32-51
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 111, characters 18-28
+  Called from Dune__exe__DeclAppl in file "demos/declAppl.ml", line 60, characters 20-50
+  [2]
+
+  $ ./declAppl.exe <<-EOF
+  > listhead Cons(1, Cons(2, Cons(3, Nil))) 
+  > EOF
+  Fatal error: exception Not_found
+  Raised at Stdlib__map.Make.find in file "map.ml", line 137, characters 10-25
+  Called from Ocaml_with_var__Inter.Interpreter.get_from_env in file "lib/inter.ml" (inlined), line 81, characters 30-49
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 106, characters 32-51
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 111, characters 18-28
+  Called from Dune__exe__DeclAppl in file "demos/declAppl.ml", line 60, characters 20-50
+  [2]
+
+  $ ./declAppl.exe <<-EOF
+  > listtail Cons(1, Cons(2, Cons(3, Nil))) 
+  > EOF
+  Fatal error: exception Not_found
+  Raised at Stdlib__map.Make.find in file "map.ml", line 137, characters 10-25
+  Called from Ocaml_with_var__Inter.Interpreter.get_from_env in file "lib/inter.ml" (inlined), line 81, characters 30-49
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 106, characters 32-51
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 111, characters 18-28
+  Called from Dune__exe__DeclAppl in file "demos/declAppl.ml", line 60, characters 20-50
+  [2]
+
+  $ ./declAppl.exe <<-EOF
+  > optionid Some(1) 
+  > EOF
+  Fatal error: exception Not_found
+  Raised at Stdlib__map.Make.find in file "map.ml", line 137, characters 10-25
+  Called from Ocaml_with_var__Inter.Interpreter.get_from_env in file "lib/inter.ml" (inlined), line 81, characters 30-49
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 106, characters 32-51
+  Called from Ocaml_with_var__Inter.Interpreter.eval in file "lib/inter.ml", line 111, characters 18-28
+  Called from Dune__exe__DeclAppl in file "demos/declAppl.ml", line 60, characters 20-50
+  [2]
+
+    
+    *)

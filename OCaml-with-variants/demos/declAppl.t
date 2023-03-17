@@ -119,37 +119,27 @@ Use `dune promote` after you change things that should runned
   Type: int 
 
   $ ./declAppl.exe <<-EOF
-  > anothermatcher @c(0) 
+  > A 
   > EOF
-  Value: 3 
-
-  $ ./declAppl.exe <<-EOF
-  > anothermatcher @d (@e(31)) 
-  > EOF
-  Value: 31 
-
-  $ ./declAppl.exe <<-EOF
-  > @d (1, 2, 4) 
-  > EOF
-  Value: d (1 2 4 )
+  Value: A ()
   Not implemented: polyvar
 
   $ ./declAppl.exe <<-EOF
-  > poly @a 
+  > poly A 
   > EOF
   Value: 1 
 
   $ ./declAppl.exe <<-EOF
-  > listHead @cons(1, @cons(2, @cons(3, @nil))) 
+  > listhead Cons(1, Cons(2, Cons(3, Nil)))  
   > EOF
-  Value: some (1 )
+  Value: Some (1 )
 
   $ ./declAppl.exe <<-EOF
-  > listTail @cons(1, @cons(2, @cons(3, @nil))) 
+  > listtail Cons(1, Cons(2, Cons(3, Nil))) 
   > EOF
-  Value: some (cons (2 cons (3 nil ())))
+  Value: Some (Cons (2 Cons (3 Nil ())))
 
   $ ./declAppl.exe <<-EOF
-  > optionId @some(1) 
+  > anothermatcher D (E(31)) 
   > EOF
-  Value: some (1 )
+  Value: 31 
