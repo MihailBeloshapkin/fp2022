@@ -327,6 +327,10 @@ let rec print_sig = function
   | TVar i -> printf "%i " i
 ;;
 
+let extent_type_env env name t =
+  TypeEnv.extend env name (Base.Set.empty (module Base.Int), t)
+;;
+
 let init_infer =
   let rec (helper : TypeEnv.t -> exps -> (Subst.t * typ) R.t) =
    fun env -> function
@@ -413,6 +417,12 @@ let init_infer =
     | Exp_polyvar _ -> fail (Not_implemented "polyvar")
     | _ -> fail Unification_failed
   and infer_match e_type return_type prev_subst env = function
+    | (Exp_ident name, right) :: tail ->
+      let new_env = extent_type_env env name e_type in
+      let* right_sub, right_t = helper new_env right in
+      let* sub = unify return_type right_t in
+      let* final_sub = Subst.compose_all [ prev_subst; right_sub; sub ] in
+      infer_match e_type return_type final_sub env tail
     | (left, right) :: tail ->
       let* left_sub, left_t = helper env left in
       let* right_sub, right_t = helper env right in
@@ -441,10 +451,6 @@ let init_infer =
     | _ -> fail Unification_failed
   in
   helper
-;;
-
-let extent_type_env env name t =
-  TypeEnv.extend env name (Base.Set.empty (module Base.Int), t)
 ;;
 
 let infer exp env = Caml.Result.map snd (run (init_infer env exp))

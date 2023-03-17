@@ -71,6 +71,7 @@ Use `dune promote` after you change things that should runned
   > matcher 30 
   > EOF
   Value: 960 
+  Type: int 
 
   $ ./declAppl.exe <<-EOF
   > firstmatcher 
