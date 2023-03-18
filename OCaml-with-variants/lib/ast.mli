@@ -1,4 +1,4 @@
-(** Copyright 2021-2022, Kakadu and contributors *)
+(** Copyright 2021-2022, Mihail Beloshapkin *)
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
@@ -9,39 +9,40 @@ type exp_type =
   | NonRec
 
 type literal =
-  | Int of int
-  | Float of float
-  | String of string
-  | Bool of bool
+  | Int of int (** Int literal *)
+  | Float of float (** Float literal *)
+  | String of string (** String literal *)
+  | Bool of bool (** Bool literal *)
 
 (** built-in binary operators *)
 type binop =
-  | AddInt
-  | SubInt
-  | MulInt
-  | DivInt
-  | AddFloat
-  | SubFloat
-  | MulFloat
-  | DivFloat
-  | And
-  | Or
-  | LeqInt
-  | GeqInt
-  | EqInt
+  | AddInt (** Integer addition *)
+  | SubInt (** Integer subtraction *)
+  | MulInt (** Integer multiplication *)
+  | DivInt (** Integer division *)
+  | AddFloat (** Float addition *)
+  | SubFloat (** Float subtraction *)
+  | MulFloat (** Float multiplication *)
+  | DivFloat (** Float division *)
+  | And (** And operation *)
+  | Or (** Or operation *)
+  | LeqInt (** Less operation *)
+  | GeqInt (** More operation *)
+  | EqInt (** Equal operation *)
 
 type exps =
-  | Exp_fun of ident * exps (* arg + body *)
-  | Exp_letbinding of exp_type * ident * exps * exps (* name + value + next exp *)
-  | Exp_ident of ident
-  | Exp_literal of literal
-  | Exp_seq of exps * exps
-  | Exp_apply of exps * exps list
-  | Exp_binop of binop * exps * exps
-  | Exp_ifthenelse of exps * exps * exps
-  | Exp_match of exps * case list
-  | Exp_polyvar of ident * exps list
-  | Exp_unit
+  | Exp_fun of ident * exps (** Function: arg + body *)
+  | Exp_letbinding of exp_type * ident * exps * exps
+      (** Let binding: name + value + next exp *)
+  | Exp_ident of ident (** Identifier *)
+  | Exp_literal of literal (** Literal *)
+  | Exp_seq of exps * exps (** Sequence of expressions *)
+  | Exp_apply of exps * exps list (** Apply function expression *)
+  | Exp_binop of binop * exps * exps (** Built-in binary operation *)
+  | Exp_ifthenelse of exps * exps * exps (** Ifhtenelse expression: condition and cases *)
+  | Exp_match of exps * case list (** Matching expresiion: exp and cases *)
+  | Exp_polyvar of ident * exps list (** Polymorphic variant *)
+  | Exp_unit (** Unit *)
 
 and case = exps * exps
 
