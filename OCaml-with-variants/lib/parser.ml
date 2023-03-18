@@ -1,8 +1,7 @@
-(** Copyright 2021-2022, Kakadu and contributors *)
+(** Copyright 2021-2022, Mihail Beloshapkin *)
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
-(* TODO: implement parser here *)
 open Angstrom
 open Caml.Format
 open Ast
@@ -115,15 +114,6 @@ module OCamlParser = struct
   ;;
 
   let int_number = take_while1 is_digit >>= fun s -> return @@ int_of_string s
-
-  let rec link_exps e_list =
-    match e_list with
-    | Exp_letbinding (is_rec, name, body, _) :: t ->
-      Exp_letbinding (is_rec, name, body, link_exps t)
-    | e :: [] -> e
-    | h :: t -> Exp_seq (h, link_exps t)
-    | _ -> failwith "empty list"
-  ;;
 
   let rec fun_constructor args body =
     match args with

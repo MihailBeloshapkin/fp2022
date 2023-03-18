@@ -1,3 +1,7 @@
+(** Copyright 2021-2022, Mihail Beloshapkin *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
+
 open Base
 open Ast
 open Infer
@@ -68,9 +72,7 @@ let read_code_from_file path =
       printf "Incorrect file content: %s" msg;
       []
   with
-  | _ ->
-    printf "%s" path;
-    []
+  | _ -> failwith "Cannot read file"
 ;;
 
 let read_several_declarations code =

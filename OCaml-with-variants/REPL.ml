@@ -1,3 +1,7 @@
+(** Copyright 2021-2022, Mihail Beloshapkin *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
+
 open Base
 open Ocaml_with_var.Repl
 open Ocaml_with_var.Infer
