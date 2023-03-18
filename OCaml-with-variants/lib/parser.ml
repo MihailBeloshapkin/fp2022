@@ -352,7 +352,7 @@ module Printer = struct
       print_ast f;
       List.iter ~f:print_ast arg_list;
       printf ")"
-    | Exp_binop (b, l, r) ->
+    | Exp_binop (_, l, r) ->
       printf "Binop(";
       print_ast l;
       print_ast r;
