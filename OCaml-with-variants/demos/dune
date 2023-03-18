@@ -12,3 +12,4 @@
 
 (cram
  (deps ./declAppl.exe ./simpleFuncs.exe ../REPL.exe))
+
