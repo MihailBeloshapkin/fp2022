@@ -4,6 +4,8 @@
 
 open Ast
 
+exception Evaluarion_error of string
+
 module IdMap = Map.Make (struct
   type t = string
 
@@ -97,7 +99,7 @@ module Interpreter = struct
         |> List.map ~f:(fun arg ->
              match eval ctx arg with
              | Ok data -> data
-             | _ -> failwith "cant eval")
+             | _ -> raise @@ Evaluarion_error "Cant evaluate polyvar constructor")
       in
       return (ContextData.Polyvar (name, constructor_data))
     | Exp_fun _ as f -> return (ContextData.Func (IdMap.empty, f))
@@ -121,7 +123,7 @@ module Interpreter = struct
             |> List.map ~f:(fun arg ->
                  match eval ctx arg with
                  | Ok data -> data
-                 | _ -> failwith "cant eval")
+                 | _ -> raise @@ Evaluarion_error "Cant evaluate function argument")
           in
           (match List.length arg_names, List.length arg_values with
            | l1, l2 when l1 = l2 ->

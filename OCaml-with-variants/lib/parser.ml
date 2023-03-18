@@ -18,6 +18,8 @@ let is_digit = function
 
 let integer = take_while1 is_digit
 
+exception Syntax_error of string
+
 module FloatNumParser = struct
   let sign =
     peek_char
@@ -120,7 +122,7 @@ module OCamlParser = struct
     match args with
     | [ a ] -> Exp_fun (a, body)
     | h :: t -> Exp_fun (h, fun_constructor t body)
-    | _ -> failwith "No args!"
+    | _ -> raise (Syntax_error "No args!")
   ;;
 
   let let_binding_constructor name arg_list body next_ex =
@@ -146,7 +148,7 @@ module OCamlParser = struct
     | "<" -> Exp_binop (LeqInt, op1, op2)
     | ">" -> Exp_binop (GeqInt, op1, op2)
     | "=" -> Exp_binop (EqInt, op1, op2)
-    | _ -> failwith "Parsing error"
+    | _ -> raise (Syntax_error "Parsing error")
   ;;
 
   let ident_parser = new_ident >>= fun res -> return @@ Exp_ident res
