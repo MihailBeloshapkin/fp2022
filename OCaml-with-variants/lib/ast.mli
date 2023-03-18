@@ -5,8 +5,8 @@
 type ident = string
 
 type exp_type =
-  | Rec
-  | NonRec
+  | Rec (** Recursive functions *)
+  | NonRec (** non recursive functions *)
 
 type literal =
   | Int of int (** Int literal *)
@@ -49,5 +49,5 @@ and case = exps * exps
 type declaration = exp_type * string * exps
 
 type top_level_expressions =
-  | Declaration of declaration
-  | Application of exps
+  | Declaration of declaration (** Function declaration *)
+  | Application of exps (** Function application (or enother type of expressions) *)

@@ -34,7 +34,8 @@ module FloatNumParser = struct
     take_while1 is_digit
     <* char '.'
     >>= fun whole ->
-    take_while1 is_digit >>= fun part -> return (sign ^ whole ^ "." ^ part)
+    take_while1 is_digit
+    >>= fun part -> return (String.concat "" [ sign; whole; "."; part ])
   ;;
 end
 
