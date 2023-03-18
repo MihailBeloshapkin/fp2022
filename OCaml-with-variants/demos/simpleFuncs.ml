@@ -10,7 +10,7 @@ let () =
   match parse_exp s with
   | Result.Ok result ->
     (match result with
-     | Declaration _ -> failwith "err"
+     | Declaration _ -> ()
      | Application exps ->
        let result = Inter.Interpreter.eval Inter.IdMap.empty exps in
        Utils.output result)
