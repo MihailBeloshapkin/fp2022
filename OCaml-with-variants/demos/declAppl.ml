@@ -9,7 +9,7 @@ let () =
   let ctx =
     Utils.read_several_declarations
       {|
-    let rec fix f x = f (fix f) x;;
+    let rec fix f = f (fix f);;
     
     let rec fact x = if x < 2 then 1 else x * (fact (x - 1));;
     
@@ -70,7 +70,6 @@ let () =
       | C (0) -> 3 
       | D ( E(v)) -> v
     ;;
-
   |}
   in
   let env = Repl.infer_declaration_list ctx in

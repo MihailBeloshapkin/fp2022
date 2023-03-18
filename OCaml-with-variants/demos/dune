@@ -1,10 +1,4 @@
 (executable
- (name demoAO)
- (modules demoAO)
- (public_name demoAO)
- (libraries OCaml-with-variants.OCamli))
-
-(executable
  (name declAppl)
  (modules declAppl)
  (public_name declAppl)
@@ -17,4 +11,4 @@
  (libraries OCaml-with-variants.OCamli stdio))
 
 (cram
- (deps ./declAppl.exe ./demoAO.exe ./simpleFuncs.exe ../REPL.exe))
+ (deps ./declAppl.exe ./simpleFuncs.exe ../REPL.exe))

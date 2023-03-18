@@ -1,5 +1,3 @@
-open Ast
-
 module TypedTree = struct
   open Ast
 
@@ -15,10 +13,8 @@ module TypedTree = struct
     | Vstring of string
     | Vbool of bool
     | Vunit
-    | VUndefined
 
   type enviroment = value IdMap.t
-
   type type_num = int
 
   type base_type =

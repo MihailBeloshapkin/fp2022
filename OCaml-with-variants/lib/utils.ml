@@ -1,7 +1,3 @@
-(** Copyright 2021-2022, Kakadu and contributors *)
-
-(** SPDX-License-Identifier: LGPL-3.0-or-later *)
-
 open Base
 open Ast
 open Infer
@@ -15,7 +11,7 @@ let print_result_of_inference = function
   | Result.Ok res ->
     Caml.Format.printf "\nType: ";
     print_t res
-  | Result.Error e -> pp_error e;
+  | Result.Error e -> pp_error e
 ;;
 
 let get_exp_type = function
@@ -28,24 +24,25 @@ let get_exp_type = function
 let rec output = function
   | Ok value -> print_value value
   | Error msg -> Caml.Format.printf "impossible to print: %s " msg
+
 and print_value = function
-  | (Interpreter.ContextData.Int i) -> Caml.Format.printf "%i " i
-  | (Interpreter.ContextData.Float f) -> Caml.Format.printf "%f " f
-  | (Interpreter.ContextData.String s) -> Caml.Format.printf "%s " s
-  | (Interpreter.ContextData.Bool b) -> Caml.Format.printf "%b " b
-  | (Interpreter.ContextData.Func _) -> Caml.Format.printf "Function"
-  | (Interpreter.ContextData.Polyvar (name, data)) -> 
+  | Interpreter.ContextData.Int i -> Caml.Format.printf "%i " i
+  | Interpreter.ContextData.Float f -> Caml.Format.printf "%f " f
+  | Interpreter.ContextData.String s -> Caml.Format.printf "%s " s
+  | Interpreter.ContextData.Bool b -> Caml.Format.printf "%b " b
+  | Interpreter.ContextData.Func _ -> Caml.Format.printf "Function"
+  | Interpreter.ContextData.Polyvar (name, data) ->
     Caml.Format.printf "%s (" name;
     print_polyvar data;
     Caml.Format.printf ")"
   | _ -> Caml.Format.printf "FAILED"
+
 and print_polyvar = function
-  | head :: t -> 
+  | head :: t ->
     print_value head;
     print_polyvar t
   | _ -> ()
 ;;
-
 
 let read_next prev =
   let input = read_line () in
@@ -66,14 +63,7 @@ let read_code_from_file path =
   try
     let declaration_list = path |> get_file |> parse_several_declarations in
     match declaration_list with
-    | Result.Ok funcs ->
-      List.fold
-        ~f:
-          (fun acc -> function
-            | Declaration (_, name, expr) -> (name, get_exp_type expr) :: acc
-            | _ -> acc)
-        ~init:[]
-        funcs
+    | Result.Ok funcs -> funcs
     | Result.Error msg ->
       printf "Incorrect file content: %s" msg;
       []
@@ -87,8 +77,8 @@ let read_several_declarations code =
   let declaration_list = code |> parse_several_declarations in
   match declaration_list with
   | Result.Ok funcs ->
+    (*List.fold ~f:(fun acc -> function Declaration (_, name, expr) -> (name, get_exp_type expr) :: acc | _ -> acc) ~init:[] funcs*)
     funcs
-    (* List.fold ~f:(fun acc -> function Declaration (_, name, expr) -> (name, get_exp_type expr) :: acc | _ -> acc) ~init:[] funcs *)
   | Result.Error msg ->
     printf "Incorrect file content: %s" msg;
     []

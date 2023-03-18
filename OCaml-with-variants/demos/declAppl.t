@@ -20,6 +20,12 @@ Use `dune promote` after you change things that should runned
   Type: int ->int ->int ->int 
 
   $ ./declAppl.exe <<-EOF
+  > fix 
+  > EOF
+  Value: Function
+  Type: 3 ->3 ->3 
+
+  $ ./declAppl.exe <<-EOF
   > fact 5
   > EOF
   Value: 120 

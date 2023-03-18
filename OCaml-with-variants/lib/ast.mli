@@ -14,10 +14,6 @@ type literal =
   | String of string
   | Bool of bool
 
-type variant_value =
-  | Id of ident
-  | Lit of literal
-
 (** built-in binary operators *)
 type binop =
   | AddInt
@@ -54,7 +50,3 @@ type declaration = exp_type * string * exps
 type top_level_expressions =
   | Declaration of declaration
   | Application of exps
-
-(* Application [f g ] *)
-(** In type definition above the 3rd constructor is intentionally without documentation
-to test linter *)

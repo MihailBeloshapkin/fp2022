@@ -50,12 +50,12 @@ module OCamlParser = struct
     | 'a' .. 'z' -> true
     | _ -> false
   ;;
-  
+
   let is_big_letter = function
     | 'A' .. 'Z' -> true
     | _ -> false
   ;;
-    
+
   let is_letter l = is_small_letter l || is_big_letter l
 
   let is_digit = function
@@ -205,7 +205,10 @@ module OCamlParser = struct
     let polyvar_parser d =
       fix
       @@ fun _ ->
-      let name = space *> take_while1 is_big_letter >>= fun part1 -> take_while is_letter >>= fun part2 -> return @@ part1 ^ part2  in
+      let name =
+        space *> take_while1 is_big_letter
+        >>= fun part1 -> take_while is_letter >>= fun part2 -> return @@ part1 ^ part2
+      in
       let constructor =
         space *> char '(' *> space *> d.e d
         >>= fun first ->
@@ -441,6 +444,7 @@ let p2 =
   |}
 ;;
 
+let rec fix f = f (fix f)
 let p2 = parse_exp "fact "
 
 let%test _ = p2 = Result.Ok (Application (Exp_ident "fact"))

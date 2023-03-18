@@ -1,11 +1,6 @@
 open Base
-open Parser
 open Ast
-open Inter
-open Inter.Interpreter.ContextData
-open Stdio
 open Infer
-open Utils
 
 let try_infer e = infer e TypeEnv.empty
 let try_infer_top_level = infer_top_level_expressions TypeEnv.empty

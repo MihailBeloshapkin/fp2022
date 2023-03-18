@@ -1,5 +1,4 @@
 open Ast
-open Caml.Format
 
 module IdMap = Map.Make (struct
   type t = string
@@ -88,13 +87,13 @@ module Interpreter = struct
     | Exp_literal (Int i) -> return (ContextData.Int i)
     | Exp_literal (Float f) -> return (ContextData.Float f)
     | Exp_literal (String s) -> return (ContextData.String s)
-    | Exp_polyvar (name, exp_list) -> 
-      let constructor_data = 
-        exp_list |> 
-        List.map ~f:(fun arg ->
-          match eval ctx arg with
-          | Ok data -> data
-          | _ -> failwith "cant eval") 
+    | Exp_polyvar (name, exp_list) ->
+      let constructor_data =
+        exp_list
+        |> List.map ~f:(fun arg ->
+             match eval ctx arg with
+             | Ok data -> data
+             | _ -> failwith "cant eval")
       in
       return (ContextData.Polyvar (name, constructor_data))
     | Exp_fun _ as f -> return (ContextData.Func (IdMap.empty, f))
@@ -158,16 +157,17 @@ module Interpreter = struct
       let ctx = add_to_env id value ctx in
       eval ctx right
     | (Exp_polyvar (name0, list0), right) :: tail ->
-        (match value with
-        | Polyvar (name1, list1) when String.equal name0 name1 ->
-          let* is_eq, new_ctx = compare_polyvar_struct ctx list1 list0 in
-          if is_eq then eval new_ctx right else eval_match value ctx tail
-        | _ ->  eval_match value ctx tail)
+      (match value with
+       | Polyvar (name1, list1) when String.equal name0 name1 ->
+         let* is_eq, new_ctx = compare_polyvar_struct ctx list1 list0 in
+         if is_eq then eval new_ctx right else eval_match value ctx tail
+       | _ -> eval_match value ctx tail)
     | (left, right) :: tail ->
       let* computed_left = eval ctx left in
       let* is_equal, new_ctx = compare_values ctx value computed_left in
       if is_equal then eval new_ctx right else eval_match value ctx tail
     | _ -> fail "sorry, no variants"
+
   and compare_values ctx first second =
     let open ContextData in
     let open Caml in
@@ -176,10 +176,6 @@ module Interpreter = struct
     | Float a, Float b -> return (a = b, ctx)
     | String s1, String s2 -> return (String.equal s1 s2, ctx)
     | Bool b1, Bool b2 -> return (b1 = b2, ctx)
-    (* | Polyvar (name0, exp_list0), Polyvar (name1, exp_list1) ->
-      if String.equal name0 name1
-      then compare_polyvars ctx exp_list0 exp_list1
-      else return (false, ctx) *)
     | _ -> return (false, ctx)
 
   and compare_polyvars ctx l1 l2 =
@@ -195,28 +191,36 @@ module Interpreter = struct
       if is_equal then compare_polyvars new_ctx t1 t2 else return (false, ctx)
     | [], [] -> return (true, ctx)
     | _ -> return (false, ctx)
+
   and compare_polyvar_struct ctx (computed : ContextData.t list) matched =
-      let open Caml in
-      match computed, matched with
-      | (Int x) :: tail1, (Exp_literal (Int y)) :: tail2 when x = y -> compare_polyvar_struct ctx tail1 tail2
-      | (Float x) :: tail1, (Exp_literal (Float y)) :: tail2 when x = y -> compare_polyvar_struct ctx tail1 tail2
-      | (Bool x) :: tail1, (Exp_literal (Bool y)) :: tail2 when x = y -> compare_polyvar_struct ctx tail1 tail2
-      | (String x) :: tail1, (Exp_literal (String y)) :: tail2 when x = y -> compare_polyvar_struct ctx tail1 tail2
-      | (Polyvar (name1, list1)) :: tail1, (Exp_polyvar (name2, list2)) :: tail2 when name1 = name2 ->
-        let* is_eq, new_ctx = compare_polyvar_struct ctx list1 list2 in 
-        if is_eq then compare_polyvar_struct new_ctx tail1 tail2 else return (false, ctx) 
-      | value :: tail1, (Exp_ident name) :: tail2 -> 
-        let ctx = add_to_env name value ctx in
-        compare_polyvar_struct ctx tail1 tail2
-      | [], [] -> return (true, ctx)
-      | _ -> return (false, ctx)
+    let open Caml in
+    match computed, matched with
+    | Int x :: tail1, Exp_literal (Int y) :: tail2 when x = y ->
+      compare_polyvar_struct ctx tail1 tail2
+    | Float x :: tail1, Exp_literal (Float y) :: tail2 when x = y ->
+      compare_polyvar_struct ctx tail1 tail2
+    | Bool x :: tail1, Exp_literal (Bool y) :: tail2 when x = y ->
+      compare_polyvar_struct ctx tail1 tail2
+    | String x :: tail1, Exp_literal (String y) :: tail2 when x = y ->
+      compare_polyvar_struct ctx tail1 tail2
+    | Polyvar (name1, list1) :: tail1, Exp_polyvar (name2, list2) :: tail2
+      when name1 = name2 ->
+      let* is_eq, new_ctx = compare_polyvar_struct ctx list1 list2 in
+      if is_eq then compare_polyvar_struct new_ctx tail1 tail2 else return (false, ctx)
+    | value :: tail1, Exp_ident name :: tail2 ->
+      let ctx = add_to_env name value ctx in
+      compare_polyvar_struct ctx tail1 tail2
+    | [], [] -> return (true, ctx)
+    | _ -> return (false, ctx)
   ;;
 end
 
 let eval = Interpreter.eval
 
 let p =
-  Interpreter.eval IdMap.empty (Exp_binop (AddInt, Exp_literal (Int 30), Exp_literal (Int 30)))
+  Interpreter.eval
+    IdMap.empty
+    (Exp_binop (AddInt, Exp_literal (Int 30), Exp_literal (Int 30)))
 ;;
 
 let%test _ = p = Ok (Interpreter.ContextData.Int 60)
@@ -243,8 +247,12 @@ let%test _ = p = Ok (Interpreter.ContextData.Int 7)
 
 let p =
   Interpreter.eval
-    (Interpreter.add_to_env "f" (Interpreter.ContextData.Func
-    (IdMap.empty, Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1))))) IdMap.empty)
+    (Interpreter.add_to_env
+       "f"
+       (Interpreter.ContextData.Func
+          ( IdMap.empty
+          , Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1))) ))
+       IdMap.empty)
     (Exp_apply (Exp_ident "f", [ Exp_literal (Int 30) ]))
 ;;
 
@@ -252,27 +260,29 @@ let%test _ = p = Ok (Interpreter.ContextData.Int 31)
 
 let p =
   Interpreter.eval
-    (Interpreter.add_to_env "f" (Interpreter.ContextData.Func
-    ( IdMap.empty
-    , Exp_fun
-        ( "x"
-        , Exp_letbinding
-            ( NonRec
-            , "v"
-            , Exp_literal (Int 1)
-            , Exp_binop (AddInt, Exp_ident "x", Exp_ident "v") ) ) ) ) IdMap.empty)
+    (Interpreter.add_to_env
+       "f"
+       (Interpreter.ContextData.Func
+          ( IdMap.empty
+          , Exp_fun
+              ( "x"
+              , Exp_letbinding
+                  ( NonRec
+                  , "v"
+                  , Exp_literal (Int 1)
+                  , Exp_binop (AddInt, Exp_ident "x", Exp_ident "v") ) ) ))
+       IdMap.empty)
     (Exp_apply (Exp_ident "f", [ Exp_literal (Int 30) ]))
 ;;
 
 let%test _ = p = Ok (Interpreter.ContextData.Int 31)
 
-(*
 let p =
-  (* f x =  let v = 1 in let r = 4 in x * v + r*)
   Interpreter.eval
-    [ ( "f"
-      , Interpreter.ContextData.Func
-          ( []
+    (Interpreter.add_to_env
+       "f"
+       (Interpreter.ContextData.Func
+          ( IdMap.empty
           , Exp_fun
               ( "x"
               , Exp_letbinding
@@ -286,64 +296,9 @@ let p =
                       , Exp_binop
                           ( AddInt
                           , Exp_binop (MulInt, Exp_ident "x", Exp_ident "v")
-                          , Exp_ident "r" ) ) ) ) ) )
-    ]
+                          , Exp_ident "r" ) ) ) ) ))
+       IdMap.empty)
     (Exp_apply (Exp_ident "f", [ Exp_literal (Int 30) ]))
 ;;
 
 let%test _ = p = Ok (Interpreter.ContextData.Int 34)
-
-let p =
-  Interpreter.eval
-    [ ( "incr"
-      , Interpreter.ContextData.Func
-          ([], Exp_fun ("x", Exp_binop (AddInt, Exp_ident "x", Exp_literal (Int 1)))) )
-    ]
-    (Exp_binop
-       ( AddInt
-       , Exp_literal (Int 7)
-       , Exp_apply (Exp_ident "incr", [ Exp_literal (Int 30) ]) ))
-;;
-
-let%test _ = p = Ok (Interpreter.ContextData.Int 38)
-
-let p =
-  Interpreter.eval
-    [ ( "func"
-      , Interpreter.ContextData.Func
-          ( []
-          , Exp_fun
-              ( "x"
-              , Exp_ifthenelse
-                  ( Exp_binop (EqInt, Exp_ident "x", Exp_literal (Int 1))
-                  , Exp_literal (Int 30)
-                  , Exp_ident "x" ) ) ) )
-    ]
-    (Exp_apply (Exp_ident "func", [ Exp_literal (Int 1) ]))
-;;
-
-let%test _ = p = Ok (Interpreter.ContextData.Int 30)
-
-let p =
-  Interpreter.eval
-    [ ( "fact"
-      , Interpreter.ContextData.Func
-          ( []
-          , Exp_fun
-              ( "n"
-              , Exp_ifthenelse
-                  ( Exp_binop (LeqInt, Exp_ident "n", Exp_literal (Int 2))
-                  , Exp_literal (Int 1)
-                  , Exp_binop
-                      ( MulInt
-                      , Exp_ident "n"
-                      , Exp_apply
-                          ( Exp_ident "fact"
-                          , [ Exp_binop (SubInt, Exp_ident "n", Exp_literal (Int 1)) ] )
-                      ) ) ) ) )
-    ]
-    (Exp_apply (Exp_ident "fact", [ Exp_literal (Int 5) ]))
-;;
-
-let%test _ = p = Ok (Interpreter.ContextData.Int 120)
-*)
