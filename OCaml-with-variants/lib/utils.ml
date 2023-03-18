@@ -64,15 +64,12 @@ let get_file filename =
 open Caml.Format
 
 let read_code_from_file path =
-  try
-    let declaration_list = path |> get_file |> parse_several_declarations in
-    match declaration_list with
-    | Result.Ok funcs -> funcs
-    | Result.Error msg ->
-      printf "Incorrect file content: %s" msg;
-      []
-  with
-  | _ -> failwith "Cannot read file"
+  let declaration_list = path |> get_file |> parse_several_declarations in
+  match declaration_list with
+  | Result.Ok funcs -> funcs
+  | Result.Error msg ->
+    printf "Incorrect file content: %s" msg;
+    []
 ;;
 
 let read_several_declarations code =
